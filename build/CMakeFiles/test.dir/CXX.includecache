@@ -1,0 +1,24 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+../debug.h
+string
+-
+vector
+-
+tuple
+-
+iostream
+-
+sstream
+-
+
+/home/jyf111/debugHelper/tests/test.cpp
+debug.h
+/home/jyf111/debugHelper/tests/debug.h
+
