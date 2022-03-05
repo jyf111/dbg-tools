@@ -48,5 +48,27 @@ int main() {
   dbg(pod);
   int longarr[] = {1, 0, -9, 5, 6, 8, 10, 12, 3, 4, 5, 11, 999};
   dbg(longarr);
+  union data{
+    int n;
+    char ch;
+    double f;
+  } ud;
+  ud.f = 1.23;
+  dbg(ud);
+  dbg(ud.f);
+  dbg(__cplusplus);
+  dbg::timer::start();
+  int sum = 0;
+  for (int i=1; i<10000000; i++) {
+    sum += rand()%i;
+  }
+  dbg::timer::stop();
+  dbg::timer::log("for loop");
+  dbg::timer::restart();
+  for (int i=1; i<10000000; i++) {
+    sum += rand()%i;
+  }
+  dbg::timer::stop();
+  dbg::timer::log("for loop");
   return 0;
 }

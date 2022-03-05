@@ -1,6 +1,11 @@
 #ifndef DEBUG_HELPER_
 #define DEBUG_HELPER_
 
+static_assert(__cplusplus>201703L, "Sry, because of __VA_OPT__, -std=c++2a should be supported");
+#if defined(WIN32)
+static_assert(false, "Sry, only support for unix");
+#endif
+
 #include <string>
 #include <vector>
 #include <tuple>
@@ -10,6 +15,7 @@
 #include <queue>
 #include <stack>
 #include <memory>
+#include <chrono>
 
 #include <unistd.h>
 
@@ -71,6 +77,12 @@ void set_error_color(std::string color) {
   ERROR_COLOR = color;
 }
 } // namespace config
+namespace helper {
+std::ostream& get_stream() {
+  return (config::os==nullptr ? std::cerr : *config::os);
+}
+}
+
 template<typename T>
 struct type {};
 
@@ -270,7 +282,7 @@ basic_print(std::ostream& os, const T& value) {
 template <typename T>
 std::enable_if_t<!has_ostream_operator<T>, void>
 basic_print(std::ostream& os, const T&) {
-  os << printer::error_print("os not support!");
+  os << printer::error_print("ostream operator << not support!");
 }
 
 template <typename T>
@@ -284,7 +296,7 @@ std::enable_if_t<is_container<const Container&>, void>
 print(std::ostream& os, const Container& value) {
   os << "{";
   const size_t size = std::size(value);
-  const size_t n = std::min(config::CONTAINER_LENGTH, size); // TODO: config
+  const size_t n = std::min(config::CONTAINER_LENGTH, size);
   size_t i = 0;
   for (auto it = std::begin(value); it != std::end(value) && i < n; ++it, ++i) {
     print(os, *it);
@@ -417,9 +429,38 @@ void print(std::ostream& os, const std::tuple<>&) {
   os << "{}";
 }
 } // namespace printer
+
+class timer {
+public:
+  static void start() {
+    start_tp = std::chrono::steady_clock::now();
+  }
+  static void restart() {
+    using namespace std::chrono_literals;
+    cost = 0ms;
+    start();
+  }
+  static void stop() {
+    auto stop_tp = std::chrono::steady_clock::now();
+    cost += std::chrono::duration_cast<std::chrono::milliseconds>(stop_tp - start_tp);
+  }
+  static void log(std::string message="") {
+    helper::get_stream() << printer::message_print(message + " elapsed: " + std::to_string(cost.count()) + "ms.\n");
+  }
+  static void show() {
+    // TODO
+  }
+private:
+  static std::chrono::steady_clock::time_point start_tp;
+  static std::chrono::milliseconds cost;
+};
+//static declaration
+std::chrono::steady_clock::time_point timer::start_tp;
+std::chrono::milliseconds timer::cost;
+
 class debugHelper {
 public:
-  debugHelper(const char* function_name, int line) : os(config::os==nullptr ? std::cerr : *config::os)
+  debugHelper(const char* function_name, int line) : os(helper::get_stream())
   {
     location = "[" + std::to_string(line)  + " (" + static_cast<std::string>(function_name) + ")]";
   }
