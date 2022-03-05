@@ -1,3 +1,0 @@
-/home/jyf111/debugHelper/build/CMakeFiles/rebuild_cache.dir
-/home/jyf111/debugHelper/build/CMakeFiles/edit_cache.dir
-/home/jyf111/debugHelper/build/CMakeFiles/test.dir

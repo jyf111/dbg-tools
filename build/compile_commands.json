@@ -1,7 +1,0 @@
-[
-{
-  "directory": "/home/jyf111/debugHelper/build",
-  "command": "/bin/x86_64-linux-gnu-g++-9   -I/home/jyf111/debugHelper  -g   -std=c++2a -Wall -o CMakeFiles/test.dir/tests/test.cpp.o -c /home/jyf111/debugHelper/tests/test.cpp",
-  "file": "/home/jyf111/debugHelper/tests/test.cpp"
-}
-]
