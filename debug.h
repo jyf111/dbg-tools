@@ -6,6 +6,8 @@
 #include <tuple>
 #include <iostream>
 #include <sstream>
+#include <queue>
+#include <stack>
 
 namespace dbg {
 template<typename T>
@@ -76,8 +78,28 @@ inline std::string type_name(type<std::string>) {
 }
 
 template <typename T>
-std::string type_name(type<std::vector<T, std::allocator<T>>>) {
+std::string type_name(type<std::vector<T>>) {
   return "std::vector<" + get_type_name<T>() + ">";
+}
+
+template <typename T>
+std::string type_name(type<std::deque<T>>) {
+  return "std::deque<" + get_type_name<T>() + ">";
+}
+
+template <typename T>
+std::string type_name(type<std::stack<T>>) {
+  return "std::stack<" + get_type_name<T>() + ">";
+}
+
+template <typename T>
+std::string type_name(type<std::queue<T>>) {
+  return "std::queue<" + get_type_name<T>() + ">";
+}
+
+template <typename T, std::size_t N>
+std::string type_name(type<std::array<T, N>>) {
+  return "std::array<" + get_type_name<T>() + ", " + std::to_string(N) + ">";
 }
 
 template <typename T1, typename T2>
@@ -88,8 +110,7 @@ std::string type_name(type<std::pair<T1, T2>>) {
 template <typename... T>
 std::string type_list_to_string() {
   std::string result;
-  auto unused = {(result += get_type_name<T>() + ", ", 0)..., 0};
-  static_cast<void>(unused);
+  [[maybe_unused]] auto unused = {(result += get_type_name<T>() + ", ", 0)..., 0};
 
   if constexpr (sizeof...(T) > 0) {
     result.pop_back();
@@ -195,6 +216,47 @@ print(std::ostream& os, Enum const& value) {
   os << static_cast<std::underlying_type_t<Enum>>(value);
 }
 
+template <typename T>
+void print(std::ostream& os, const std::stack<T>& value) {
+  auto stk = value;
+  os << "{";
+  std::stringstream tmp;
+  if (!stk.empty()) {
+    print(tmp, stk.top());
+    stk.pop();
+
+    while (!stk.empty()) {
+      tmp << " ,"; // ! notice
+      print(tmp, stk.top());
+      stk.pop();
+    }
+  }
+  auto str = tmp.str();
+  reverse(str.begin(), str.end());
+  os << str << '}';
+}
+
+// template <typename T>
+// void print(std::ostream& os, const std::queue<T>& value) {
+//   auto q = value;
+//   os << "{";
+//   if (!q.empty()) {
+//     print(os, q.front());
+//     q.pop();
+
+//     while (!q.empty()) {
+//       os << ", ";
+//       print(os, q.front());
+//       q.pop();
+//     }
+//   }
+//   os << '}';
+// }
+
+void print(std::ostream& os, const std::string_view& value) {
+  os << '"' << static_cast<std::string>(value) << '"';
+}
+
 void print(std::ostream& os, const std::string& value) {
   os << '"' << value << '"';
 }
@@ -268,34 +330,66 @@ void print(std::ostream& os, const std::tuple<>&) {
 class debugHelper {
 public:
   debugHelper(const char* function_name, int line) {
-    location = "[" + static_cast<std::string>(function_name) + "(" + std::to_string(line) + ")]";
+    location = "[" + std::to_string(line)  + " (" + static_cast<std::string>(function_name) + ")]";
   }
-  static void clear() {
-    exprs.clear();
-    types.clear();
+  static void push_expr(const std::string& expr) {
+    exprs.emplace(expr);
   }
-  static void push_expr(std::string expr) {
-    exprs.push_back(expr);
-  }
-  static void push_type(std::string type) {
-    types.push_back(type);
+  static void push_type(const std::string& type) {
+    types.emplace(type);
   }
   template <typename... Ts>
-  void print(std::tuple<Ts...> values) {
-    int num = std::tuple_size<decltype(values)>::value;
-    std::cout << location << ' ' << num << '\n';
-    for (int i=0; i<num; i++) {
-      std::cout << exprs[i] << ' ' << types[i] << '\n';
+  void print(Ts&&... values) {
+    if constexpr (sizeof...(values)>0) {
+      std::cout << location << " ";
+      print_expand(values...);
+    } else {
+      std::cout << "empty"; // TODO
     }
-    std::stringstream stream_value;
-    printer::print(stream_value, values);
-    std::cout << stream_value.str() << '\n';
+    std::cout << '\n';
+    // for (int i = 0; i < num; ++i) {
+    //   std::stringstream value;
+    //   print(value, )
+    //   std::cout << ' ' << exprs[i] << " = " << ' ' << types[i];
+    //   if (i + 1 < num) {
+    //     std::cout << ',';
+    //   }
+    // }
+    // std::cout << '\n';
   }
 private:
-  static std::vector<std::string> exprs, types;
+  static std::queue<std::string> exprs, types;
   std::string location;
+  template <typename Head>
+  void print_expand(Head head) {
+    std::cout << exprs.front() << " = ";
+    exprs.pop();
+
+    std::stringstream value;
+    printer::print(value, head);
+    std::cout << value.str();
+
+    std::cout << " (" << types.front() << ")";
+    types.pop();
+  }
+  template <typename Head, typename... Tail>
+  void print_expand(Head head, Tail... tail) {
+    std::cout << exprs.front() << " = ";
+    exprs.pop();
+
+    std::stringstream value;
+    printer::print(value, head);
+    std::cout << value.str();
+
+    std::cout << " (" << types.front() << "), ";
+    types.pop();
+
+    print_expand(tail...);
+  }
 };
-std::vector<std::string> debugHelper::exprs, debugHelper::types;
+
+std::queue<std::string> debugHelper::exprs, debugHelper::types;
+
 } // namespace dbg
 
 
@@ -315,9 +409,8 @@ std::vector<std::string> debugHelper::exprs, debugHelper::types;
 #define DBG_SAVE_EXPR(x) dbg::debugHelper::push_expr(static_cast<std::string>(#x));
 #define DBG_SAVE_TYPE(x) dbg::debugHelper::push_type(dbg::get_type_name<decltype(x)>());
 #define dbg(...) \
-  dbg::debugHelper::clear(); \
   FOR_EACH(DBG_SAVE_EXPR, __VA_ARGS__) \
   FOR_EACH(DBG_SAVE_TYPE, __VA_ARGS__) \
-  dbg::debugHelper(__func__, __LINE__).print(std::forward_as_tuple(__VA_ARGS__)) \
+  dbg::debugHelper(__func__, __LINE__).print(__VA_ARGS__)
 
 #endif
