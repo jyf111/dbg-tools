@@ -7,4 +7,5 @@
 + [ ] integral size(无法做到 因为int32_t==int ?)
 + [ ] POD easy output [magic-get]<https://www.youtube.com/watch?v=abdeAew3gmQ>(reflection)
 + [ ] empty debug
-+ [ ] support for queue、stack...(string view?)
++ [ ] support for queue、stack...(string view、union、shared_ptr、uniqueptr、variant...)
++ [ ] 2、8、16进制整数

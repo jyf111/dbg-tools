@@ -5,6 +5,7 @@ enum E {
   ok
 };
 int main() {
+  dbg("this is a message");
   int a = 1;
   int& b = a;
   int* c = &a;
@@ -33,6 +34,19 @@ int main() {
   dbg(dq);
   std::stack<uint64_t> stk;
   stk.push(0); stk.push(999);
-  dbg(stk);
+  dbg(stk, "Hello !!", "Error.");
+  dbg("Test", "test2");
+  std::string str = "str";
+  const char* ccc = "meme";
+  dbg(str);
+  dbg(ccc);
+  struct POD {
+    int a, b;
+  };
+  POD pod{1, 2};
+  dbg(pod.a, pod.b);
+  dbg(pod);
+  int longarr[] = {1, 0, -9, 5, 6, 8, 10, 12, 3, 4, 5, 11, 999};
+  dbg(longarr);
   return 0;
 }
