@@ -1,8 +1,18 @@
-#include "debug.h"
-#include <fstream>
+#include "../debug.h"
+
 enum E {
   bad,
   ok
+};
+union gb {
+  int x;
+  short y;
+};
+struct element {
+  int a;
+  long b;
+  double c;
+  float d;
 };
 int main() {
   dbg("this is a message");
@@ -70,5 +80,13 @@ int main() {
   }
   dbg::timer::stop();
   dbg::timer::log("for loop");
+  dbg::timer::show();
+  dbg(dbgtype(sum));
+  short tmp = 0;
+  volatile const short* place = &tmp;
+  dbg(dbgtype(place));
+  element ele{};
+  gb gg;
+  dbg("test dbgtype:", dbgtype(ele), dbgtype(ud), dgbtype(gg));
   return 0;
 }

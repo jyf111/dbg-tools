@@ -16,6 +16,7 @@ static_assert(false, "Sry, only support for unix");
 #include <stack>
 #include <memory>
 #include <chrono>
+#include <iomanip>
 
 #include <unistd.h>
 
@@ -87,7 +88,7 @@ template<typename T>
 struct type {};
 
 template <int&... ExplicitArgumentBarrier, typename T>
-std::enable_if_t<!std::is_enum_v<T>, std::string>
+std::enable_if_t<!std::is_enum_v<T> && !std::is_union_v<T>, std::string>
 type_name(type<T>) {
   auto pretty_function = static_cast<std::string>(__PRETTY_FUNCTION__);
   const auto L = pretty_function.find("T = ") + 4;
@@ -155,6 +156,25 @@ template <typename Enum>
 std::enable_if_t<std::is_enum_v<Enum>, std::string>
 type_name(type<Enum>) {
   return "enum : " + get_type_name<std::underlying_type_t<Enum>>();
+}
+
+template <typename Union>
+std::enable_if_t<std::is_union_v<Union>, std::string>
+type_name(type<Union>) {
+  auto pretty_function = static_cast<std::string>(__PRETTY_FUNCTION__);
+  const auto L = pretty_function.find("Union = ") + 8;
+  const auto R = pretty_function.find_last_of(";");
+  auto name = pretty_function.substr(L, R-L);
+  const auto pos = name.find_last_of("::");
+  if (pos!=std::string::npos) {
+    name = name.substr(pos+1);
+  }
+  return "union " + name;
+}
+
+template <typename T>
+std::string type_name(type<type<T>>) {
+  return get_type_name<T>();
 }
 
 template <typename T>
@@ -249,27 +269,27 @@ template <typename T>
 constexpr bool has_ostream_operator = is_detected_v<detect_ostream_operator_t, T>;
 
 namespace printer {
-std::string location_print(std::string& s) {
+std::string location_print(const std::string& s) {
   if (config::colorized_out) return config::LOCATION_COLOR + s + config::RESET_COLOR;
   else return s;
 }
-std::string expression_print(std::string& s) {
+std::string expression_print(const std::string& s) {
   if (config::colorized_out) return config::EXPRESSION_COLOR + s + config::RESET_COLOR;
   else return s;
 }
-std::string value_print(std::string&& s) { //! NOTICE cannot lref
+std::string value_print(const std::string& s) { 
   if (config::colorized_out) return config::VALUE_COLOR + s + config::RESET_COLOR;
   else return s;
 }
-std::string type_print(std::string& s) {
+std::string type_print(const std::string& s) {
   if (config::colorized_out) return config::TYPE_COLOR + s + config::RESET_COLOR;
   else return s;
 }
-std::string message_print(std::string&& s) {
+std::string message_print(const std::string& s) {
   if (config::colorized_out) return config::MESSAGE_COLOR + s + config::RESET_COLOR;
   else return s;
 }
-std::string error_print(std::string&& s) {
+std::string error_print(const std::string& s) {
   if (config::colorized_out) return config::ERROR_COLOR + s + config::RESET_COLOR;
   else return s;
 }
@@ -445,10 +465,16 @@ public:
     cost += std::chrono::duration_cast<std::chrono::milliseconds>(stop_tp - start_tp);
   }
   static void log(std::string message="") {
-    helper::get_stream() << printer::message_print(message + " elapsed: " + std::to_string(cost.count()) + "ms.\n");
+    helper::get_stream() << printer::message_print(message + " elapsed " + std::to_string(cost.count()) + "ms.\n");
   }
   static void show() {
-    // TODO
+    const auto now = std::chrono::system_clock::now();
+    auto t = std::chrono::system_clock::to_time_t(now);
+    const std::tm* tm = std::localtime(&t);
+    helper::get_stream() << printer::message_print("current time = "
+                              + std::to_string(tm->tm_hour) + ':'
+                              + std::to_string(tm->tm_min) + ':'
+                              + std::to_string(tm->tm_sec) + '\n');
   }
 private:
   static std::chrono::steady_clock::time_point start_tp;
@@ -504,6 +530,14 @@ private:
 
     types.pop();
   }
+  template <typename T>
+  void print_expand(type<T> head) {
+    exprs.pop();
+
+    os << printer::type_print(types.front() + " [sizeof " + std::to_string(sizeof(T)) + "]");
+
+    types.pop();
+  }
   template <typename Head, typename... Tail>
   void print_expand(Head&& head, Tail&&... tail) {
     os << printer::expression_print(exprs.front()) << " = ";
@@ -523,6 +557,16 @@ private:
     exprs.pop();
 
     os << printer::message_print(head) << ", ";
+
+    types.pop();
+
+    print_expand(tail...);
+  }
+  template <typename T, typename... Tail>
+  void print_expand(type<T> head, Tail&&... tail) {
+    exprs.pop();
+
+    os << printer::type_print(types.front() + " [sizeof " + std::to_string(sizeof(T)) + "]") << ", ";
 
     types.pop();
 
@@ -555,4 +599,5 @@ std::queue<std::string> debugHelper::exprs, debugHelper::types;
   FOR_EACH(DBG_SAVE_TYPE, __VA_ARGS__) \
   dbg::debugHelper(__func__, __LINE__).print(__VA_ARGS__)
 
+#define dbgtype(x) dbg::type<decltype(x)>()
 #endif
