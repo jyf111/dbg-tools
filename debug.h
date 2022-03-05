@@ -4,17 +4,73 @@
 #include <string>
 #include <vector>
 #include <tuple>
+#include <fstream>
 #include <iostream>
 #include <sstream>
 #include <queue>
 #include <stack>
+#include <memory>
+
+#include <unistd.h>
 
 namespace dbg {
+namespace config {
+std::ostream* os = nullptr; // defer the init
+std::size_t CONTAINER_LENGTH{10};
+std::string LOCATION_COLOR = "\033[30m"; // grey
+std::string EXPRESSION_COLOR = "\033[36m"; // cyan
+std::string VALUE_COLOR = "\033[37m"; // white
+std::string MESSAGE_COLOR = "\033[32m"; // green
+std::string ERROR_COLOR = "\033[31m"; // red
+const std::string RESET_COLOR = "\033[0m";
+const std::string EMPTY_COLOR = "";
+void init_stream(std::ostream& redirect) {
+  os = &(redirect);
+}
+void set_container_length(std::size_t length) {
+  CONTAINER_LENGTH = length;
+}
+void set_location_color(std::string color) {
+  LOCATION_COLOR = color;
+}
+void set_expression_color(std::string color) {
+  EXPRESSION_COLOR = color;
+}
+void set_value_color(std::string color) {
+  VALUE_COLOR = color;
+}
+void set_message_color(std::string color) {
+  MESSAGE_COLOR = color;
+}
+void set_error_color(std::string color) {
+  ERROR_COLOR = color;
+}
+} // namespace config
+namespace helper {
+FILE* get_standard_stream(const std::ostream& os) {
+  if (&os == &std::cout)
+    return stdout;
+  else if ((&os == &std::cerr) || (&os == &std::clog))
+    return stderr;
+  return nullptr;
+}
+bool is_atty(const std::ostream& os) {
+  FILE* std_stream = get_standard_stream(os);
+  if (std_stream==nullptr)
+    return false;
+  else
+    return ::isatty(fileno(std_stream));
+}
+bool should_color(std::ostream& os) {
+  return is_atty(os);
+}
+} // namespace helper
 template<typename T>
 struct type {};
 
 template <int&... ExplicitArgumentBarrier, typename T>
-std::string type_name(type<T>) {
+std::enable_if_t<!std::is_enum_v<T>, std::string>
+type_name(type<T>) {
   auto pretty_function = static_cast<std::string>(__PRETTY_FUNCTION__);
   const auto L = pretty_function.find("T = ") + 4;
   const auto R = pretty_function.find_last_of(";");
@@ -75,6 +131,12 @@ inline std::string type_name(type<unsigned long long>) {
 
 inline std::string type_name(type<std::string>) {
   return "std::string"; // std::__cxx11::basic_string<char>
+}
+
+template <typename Enum>
+std::enable_if_t<std::is_enum_v<Enum>, std::string>
+type_name(type<Enum>) {
+  return "enum : " + get_type_name<std::underlying_type_t<Enum>>();
 }
 
 template <typename T>
@@ -193,7 +255,7 @@ std::enable_if_t<is_container<const Container&>, void>
 print(std::ostream& os, const Container& value) {
   os << "{";
   const size_t size = std::size(value);
-  const size_t n = std::min(size_t{10}, size); // TODO: config
+  const size_t n = std::min(config::CONTAINER_LENGTH, size); // TODO: config
   size_t i = 0;
   for (auto it = begin(value); it != end(value) && i < n; ++it, ++i) {
     print(os, *it);
@@ -236,22 +298,22 @@ void print(std::ostream& os, const std::stack<T>& value) {
   os << str << '}';
 }
 
-// template <typename T>
-// void print(std::ostream& os, const std::queue<T>& value) {
-//   auto q = value;
-//   os << "{";
-//   if (!q.empty()) {
-//     print(os, q.front());
-//     q.pop();
+template <typename T>
+void print(std::ostream& os, const std::queue<T>& value) {
+  auto q = value;
+  os << "{";
+  if (!q.empty()) {
+    print(os, q.front());
+    q.pop();
 
-//     while (!q.empty()) {
-//       os << ", ";
-//       print(os, q.front());
-//       q.pop();
-//     }
-//   }
-//   os << '}';
-// }
+    while (!q.empty()) {
+      os << ", ";
+      print(os, q.front());
+      q.pop();
+    }
+  }
+  os << '}';
+}
 
 void print(std::ostream& os, const std::string_view& value) {
   os << '"' << static_cast<std::string>(value) << '"';
@@ -326,10 +388,12 @@ void print(std::ostream& os, const std::tuple<>&) {
   os << "{}";
 }
 } // namespace printer
-
 class debugHelper {
 public:
-  debugHelper(const char* function_name, int line) {
+  debugHelper(const char* function_name, int line)
+    : os(config::os==nullptr ? std::cerr : *config::os),
+      colorized_out(helper::should_color(os))
+  {
     location = "[" + std::to_string(line)  + " (" + static_cast<std::string>(function_name) + ")]";
   }
   static void push_expr(const std::string& expr) {
@@ -341,50 +405,66 @@ public:
   template <typename... Ts>
   void print(Ts&&... values) {
     if constexpr (sizeof...(values)>0) {
-      std::cout << location << " ";
+      os << location_color() << location << reset_color() << " ";
       print_expand(values...);
     } else {
-      std::cout << "empty"; // TODO
+      os << "empty"; // TODO
     }
-    std::cout << '\n';
-    // for (int i = 0; i < num; ++i) {
-    //   std::stringstream value;
-    //   print(value, )
-    //   std::cout << ' ' << exprs[i] << " = " << ' ' << types[i];
-    //   if (i + 1 < num) {
-    //     std::cout << ',';
-    //   }
-    // }
-    // std::cout << '\n';
+    os << '\n';
   }
 private:
   static std::queue<std::string> exprs, types;
   std::string location;
+  std::ostream& os;
+  const bool colorized_out;
   template <typename Head>
   void print_expand(Head head) {
-    std::cout << exprs.front() << " = ";
+    os << expression_color() << exprs.front() << reset_color() << " = ";
     exprs.pop();
 
     std::stringstream value;
     printer::print(value, head);
-    std::cout << value.str();
+    os << value_color() << value.str() << reset_color();
 
-    std::cout << " (" << types.front() << ")";
+    os << " (" << types.front() << ")";
     types.pop();
   }
   template <typename Head, typename... Tail>
   void print_expand(Head head, Tail... tail) {
-    std::cout << exprs.front() << " = ";
+    os << expression_color() << exprs.front() << reset_color() << " = ";
     exprs.pop();
 
     std::stringstream value;
     printer::print(value, head);
-    std::cout << value.str();
+    os << value_color() << value.str() << reset_color();
 
-    std::cout << " (" << types.front() << "), ";
+    os << " (" << types.front() << "), ";
     types.pop();
 
     print_expand(tail...);
+  }
+  std::string location_color() const {
+    if (colorized_out) return config::LOCATION_COLOR;
+    else return config::EMPTY_COLOR;
+  }
+  std::string expression_color() const {
+    if (colorized_out) return config::EXPRESSION_COLOR;
+    else return config::EMPTY_COLOR;
+  }
+  std::string value_color() const {
+    if (colorized_out) return config::VALUE_COLOR;
+    else return config::EMPTY_COLOR;
+  }
+  std::string message_color() const {
+    if (colorized_out) return config::MESSAGE_COLOR;
+    else return config::EMPTY_COLOR;
+  }
+  std::string error_color() const {
+    if (colorized_out) return config::ERROR_COLOR;
+    else return config::EMPTY_COLOR;
+  }
+  const std::string reset_color() const {
+    return config::RESET_COLOR;
   }
 };
 

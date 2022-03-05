@@ -1,5 +1,9 @@
 #include "debug.h"
-
+#include <fstream>
+enum E {
+  bad,
+  ok
+};
 int main() {
   int a = 1;
   int& b = a;
@@ -10,10 +14,6 @@ int main() {
   const int* eee = &a;
   std::nullptr_t f = nullptr;
   std::vector<int> vec{1, 2 ,3};
-  enum E {
-    bad,
-    ok
-  };
   enum class F : std::size_t {
     oo = 2,
     pp
@@ -24,7 +24,7 @@ int main() {
   std::queue<short> q;
   q.push(1); q.push(20);
   dbg(q);
-  std::array<long long, 4> arr{1, 10, 99, 87};
+  std::array<unsigned long long, 4> arr{1, 10, 99, 87};
   dbg(arr);
   std::string_view sv("123Yio");
   dbg(sv);
