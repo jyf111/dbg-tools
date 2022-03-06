@@ -14,6 +14,13 @@ struct element {
   double c;
   float d;
 };
+struct none {
+
+};
+
+struct single {
+  long one = 1;
+};
 int main() {
   dbg("this is a message");
   int a = 1;
@@ -55,7 +62,6 @@ int main() {
   };
   POD pod{1, 2};
   dbg(pod.a, pod.b);
-  dbg(pod);
   int longarr[] = {1, 0, -9, 5, 6, 8, 10, 12, 3, 4, 5, 11, 999};
   dbg(longarr);
   union data{
@@ -64,7 +70,7 @@ int main() {
     double f;
   } ud;
   ud.f = 1.23;
-  dbg(ud);
+  //dbg(ud);
   dbg(ud.f);
   dbg(__cplusplus);
   dbg::timer::start();
@@ -87,6 +93,12 @@ int main() {
   dbg(dbgtype(place));
   element ele{};
   gb gg;
-  dbg("test dbgtype:", dbgtype(ele), dbgtype(ud), dgbtype(gg));
+  dbg("test dbgtype:", dbgtype(ele), dbgtype(ud), dbgtype(gg));
+  dbg(pod);
+  dbg(ele);
+  single sg;
+  none ne;
+  dbg(sg, ne);
+  std::cout << std::is_aggregate_v<const single&> << '\n';
   return 0;
 }
