@@ -2,7 +2,14 @@ cmake_minimum_required(VERSION 3.1)
 
 project(debugHelper)
 
-add_compile_options(-std=c++2a -Wall)
+option(SINGLE "option for single variable macro" OFF)
+
+if (SINGLE)
+  add_compile_options(-std=c++17 -Wall)
+  add_definitions(-DSINGLE)
+else ()
+  add_compile_options(-std=c++2a -Wall)
+endif ()
 
 add_executable(test
   tests/test.cpp

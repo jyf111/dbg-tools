@@ -1,4 +1,4 @@
-#include "../debug.h"
+#include "../debug.hpp"
 
 enum E {
   bad,
@@ -36,8 +36,10 @@ int main() {
     oo = 2,
     pp
   };
-  dbg(); // empty
+  //dbg(); // empty
+  #ifndef SINGLE
   dbg(a, b, c, d, e, ee, eee, f, bad, ok, F::oo);
+  #endif
   dbg(vec);
   std::queue<short> q;
   q.push(1); q.push(20);
@@ -51,8 +53,10 @@ int main() {
   dbg(dq);
   std::stack<uint64_t> stk;
   stk.push(0); stk.push(999);
+  #ifndef SINGLE
   dbg(stk, "Hello !!", "Error.");
   dbg("Test", "test2");
+  #endif
   std::string str = "str";
   const char* ccc = "meme";
   dbg(str);
@@ -61,7 +65,9 @@ int main() {
     int a, b;
   };
   POD pod{1, 2};
+  #ifndef SINGLE
   dbg(pod.a, pod.b);
+  #endif
   int longarr[] = {1, 0, -9, 5, 6, 8, 10, 12, 3, 4, 5, 11, 999};
   dbg(longarr);
   union data{
@@ -93,12 +99,20 @@ int main() {
   dbg(dbgtype(place));
   element ele{};
   gb gg;
+  #ifndef SINGLE
   dbg("test dbgtype:", dbgtype(ele), dbgtype(ud), dbgtype(gg));
+  #endif
   dbg(pod);
   dbg(ele);
   single sg;
   none ne;
+  #ifndef SINGLE
   dbg(sg, ne);
-  std::cout << std::is_aggregate_v<const single&> << '\n';
+  #endif
+  dbg(std::is_aggregate_v<const single&>);
+  dbg("");
+  #ifndef SINGLE
+  dbg();
+  #endif
   return 0;
 }

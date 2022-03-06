@@ -1,8 +1,13 @@
 #ifndef DEBUG_HELPER_
 #define DEBUG_HELPER_
 
+#ifdef SINGLE
+static_assert(__cplusplus>=201703L, "Sry, -std=c++17 should be supported");
+#else
 static_assert(__cplusplus>201703L, "Sry, because of __VA_OPT__, -std=c++2a should be supported");
-#if defined(WIN32)
+#endif
+
+#if defined(WIN32) // TODO
 static_assert(false, "Sry, only support for unix");
 #endif
 
@@ -17,6 +22,8 @@ static_assert(false, "Sry, only support for unix");
 #include <memory>
 #include <chrono>
 #include <iomanip>
+#include <algorithm>
+#include <cstring>
 
 #include <unistd.h>
 
@@ -510,7 +517,7 @@ void print(std::ostream& os, const std::stack<T>& value) {
     }
   }
   auto str = tmp.str();
-  reverse(str.begin(), str.end());
+  std::reverse(str.begin(), str.end());
   os << str << '}';
 }
 
@@ -649,8 +656,11 @@ private:
   template <std::size_t N>
   void print_expand(const char (&head)[N]) {
     exprs.pop();
-
-    os << printer::message_print(head);
+    if (strlen(head)==0) {
+      os << printer::message_print(R"("")");
+    } else {
+      os << printer::message_print(head);
+    }
 
     types.pop();
   }
@@ -702,7 +712,14 @@ std::queue<std::string> debugHelper::exprs, debugHelper::types;
 
 } // namespace dbg
 
-
+#ifdef SINGLE
+#define dbg(x)                                                      \
+  do {                                                              \
+    dbg::debugHelper::push_expr(static_cast<std::string>(#x));      \
+    dbg::debugHelper::push_type(dbg::get_type_name<decltype(x)>()); \
+    dbg::debugHelper(__func__, __LINE__).print(x);                  \
+  } while (false)
+#else
 #define PARENS ()
 #define EXPAND(arg) EXPAND1(EXPAND1(EXPAND1(EXPAND1(arg))))
 #define EXPAND1(arg) EXPAND2(EXPAND2(EXPAND2(EXPAND2(arg))))
@@ -718,10 +735,16 @@ std::queue<std::string> debugHelper::exprs, debugHelper::types;
 
 #define DBG_SAVE_EXPR(x) dbg::debugHelper::push_expr(static_cast<std::string>(#x));
 #define DBG_SAVE_TYPE(x) dbg::debugHelper::push_type(dbg::get_type_name<decltype(x)>());
-#define dbg(...) \
-  FOR_EACH(DBG_SAVE_EXPR, __VA_ARGS__) \
-  FOR_EACH(DBG_SAVE_TYPE, __VA_ARGS__) \
-  dbg::debugHelper(__func__, __LINE__).print(__VA_ARGS__)
+
+#define dbg(...)                                            \
+  do {                                                      \
+    FOR_EACH(DBG_SAVE_EXPR, __VA_ARGS__)                    \
+    FOR_EACH(DBG_SAVE_TYPE, __VA_ARGS__)                    \
+    dbg::debugHelper(__func__, __LINE__).print(__VA_ARGS__); \
+  } while (false)
+
+#endif
 
 #define dbgtype(x) dbg::type<decltype(x)>()
+
 #endif

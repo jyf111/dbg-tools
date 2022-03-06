@@ -25,5 +25,5 @@ if __name__ == "__main__":
   if len(sys.argv)!=2:
     print("please input the number for gen() correctly!")
   else:
-    for i in range(int(sys.argv[1])):
+    for i in range(int(sys.argv[1])+1):
       print(gen(i))
