@@ -146,6 +146,8 @@ int main() {
     dbg(dummy_int_array);
     int longarr[] = {1, 0, -9, 5, 6, 8, 10, 12, 3, 4, 5, 11, 999};
     dbg(longarr);
+    int multi_demension[4][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+    dbg(multi_demension);
   }
   {
   #ifndef SINGLE
@@ -243,6 +245,7 @@ int main() {
       std::vector<int> vec;
       struct inner {
         int integer;
+        double decimal;
       } in;
       int *b;
       const char* cs;
@@ -250,7 +253,7 @@ int main() {
       std::string name;
     };
     int tmp = 6;
-    complex_data cd = {{1, 2, 3}, {123}, &tmp, "complex", 'P', "Alex"};
+    complex_data cd = {{1, 2, 3}, {123, 2.0}, &tmp, "complex", 'P', "Alex"};
     dbg(cd);
   }
   {
@@ -262,6 +265,13 @@ int main() {
     dbg(uq_ptr);
     std::shared_ptr<long> sh_ptr = std::make_shared<long>(29);
     dbg(sh_ptr);
+    std::variant<int, float> v;
+    v = 12;
+    dbg(v);
+    struct sp {
+      int a[2] = {0, 1};
+    };
+    //dbg(sp());
   }
   return 0;
 }

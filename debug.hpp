@@ -26,6 +26,7 @@ static_assert(false, "Sry, only support for unix");
 #include <cstring>
 #include <list>
 #include <optional>
+#include <variant>
 
 #include <unistd.h>
 
@@ -513,6 +514,9 @@ void print(std::ostream& os, std::unique_ptr<T, Deleter>& value);
 
 template <typename T>
 void print(std::ostream& os, std::shared_ptr<T>& value);
+
+template <typename... Ts>
+void print(std::ostream& os, const std::variant<Ts...>& value);
 // end of forward declaration for print
 
 template <typename Enum>
@@ -692,6 +696,13 @@ template <typename T>
 void print(std::ostream& os, std::shared_ptr<T>& value) {
   print(os, value.get());
   os << " (use_count = " << value.use_count() << ")";
+}
+
+template <typename... Ts>
+void print(std::ostream& os, const std::variant<Ts...>& value) {
+  os << "{";
+  std::visit([&os](auto&& arg) { print(os, arg); }, value);
+  os << "}";
 }
 
 } // namespace printer
