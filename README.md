@@ -47,16 +47,21 @@ int main() {
 
 #### weakness
 1. 为了显示传入的语句，并且更好的输出类型，只能使用宏，而多参数需要借助FOR_EACH_MACRO，容易导致报错信息过多（与宏展开有关）。多参数宏为了解决空参数问题，使用了__VA_OPT__，所以至少需要-std=c++2a。可以通过-DSINGLE指明使用单参数，此时需要-std=c++17，但是不支持空参数。
-2. 聚合类型中包含原生数组还存在问题。 TODO!
-3. 只支持unix，windows的colorize接口不一样
+2. 由于使用了宏，不支持直接传入初始化列表形式
+```cpp
+// not support!
+dbg({1, 3, 4}); dbg(data{1, 2});
+```
+3. 聚合类型中包含原生数组还存在问题。 TODO!
 ```cpp
 // example
 struct st {
   int a[2];
 };
 ```
-4. 对于不可打印字符(<0x20||>0x7f)，用unicode字符·('\u00b7')代替，字符串中不可打印字符还没有进行替换(是否有必要这么做，需要考虑)
-5. 测试
+4. 只支持unix，windows的colorize接口不一样
+5. 对于不可打印字符(<0x20||>0x7f)，用unicode字符·('\u00b7')代替，字符串中不可打印字符还没有进行替换(是否有必要这么做，需要考虑)
+6. 测试
 #### thanks for
 + [magic-get](https://www.youtube.com/watch?v=abdeAew3gmQ) <https://github.com/boostorg/pfr>
 + dbg-macro <https://github.com/sharkdp/dbg-macro>
