@@ -1,8 +1,13 @@
 #### build
 ```shell
 mkdir build && cd build
-cmake .. // 如果只有c++17，或者只需要单参数，cmake -DSINGLE=on ..
-make
+cmake .. # 如果只有c++17，或者只需要单参数，cmake -DSINGLE=on ..
+make -j4
+./test
+# or
+cmake -B build
+cmake --build build --parallel 4
+build/test
 ```
 #### demo
 ```cpp

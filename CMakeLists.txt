@@ -1,21 +1,28 @@
 cmake_minimum_required(VERSION 3.1)
 
-project(debugHelper)
+project(debugHelper LANGUAGES CXX)
 
 option(SINGLE "option for single variable macro" OFF)
 
-if (SINGLE)
-  add_compile_options(-std=c++17 -Wall)
-  add_definitions(-DSINGLE)
-else ()
-  add_compile_options(-std=c++2a -Wall)
-endif ()
+add_executable(test tests/test.cpp)
 
-add_executable(test
-  tests/test.cpp
-)
+if (SINGLE)
+  target_compile_options(test
+  PUBLIC
+    -std=c++17
+  )
+  target_compile_definitions(test
+  PUBLIC
+    -DSINGLE
+  )
+else()
+  target_compile_options(test
+  PUBLIC
+    -std=c++2a
+  )
+endif()
 
 target_include_directories(test
-  PRIVATE
-    ${PROJECT_SOURCE_DIR}
+PRIVATE
+  ${PROJECT_SOURCE_DIR}
 )
