@@ -1,144 +1,125 @@
-#ifndef DEBUG_HELPER_
-#define DEBUG_HELPER_
+#ifndef DEBUG_HELPER_DEBUG_HPP_
+#define DEBUG_HELPER_DEBUG_HPP_
 
 #ifdef SINGLE
-static_assert(__cplusplus>=201703L, "Sry, -std=c++17 should be supported");
+static_assert(__cplusplus >= 201703L, "Sry, -std=c++17 should be supported");
 #else
-static_assert(__cplusplus>201703L, "Sry, because of __VA_OPT__, -std=c++2a should be supported");
+static_assert(__cplusplus > 201703L, "Sry, because of __VA_OPT__, -std=c++2a should be supported");
 #endif
 
-#if defined(WIN32) // TODO
+#if defined(WIN32)  // TODO
 static_assert(false, "Sry, only support for unix");
 #endif
 
-#include <string>
-#include <vector>
-#include <tuple>
-#include <fstream>
-#include <iostream>
-#include <sstream>
-#include <queue>
-#include <stack>
-#include <memory>
-#include <chrono>
-#include <iomanip>
-#include <algorithm>
-#include <cstring>
-#include <list>
-#include <optional>
-#include <variant>
-
 #include <unistd.h>
+
+#include <algorithm>
+#include <chrono>
+#include <cstring>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <list>
+#include <memory>
+#include <optional>
+#include <queue>
+#include <sstream>
+#include <stack>
+#include <string>
+#include <tuple>
+#include <variant>
+#include <vector>
 
 namespace dbg {
 namespace helper {
-FILE* get_standard_stream(const std::ostream& os) {
+inline FILE* get_standard_stream(const std::ostream& os) {
   if (&os == &std::cout)
     return stdout;
   else if ((&os == &std::cerr) || (&os == &std::clog))
     return stderr;
   return nullptr;
 }
-bool is_atty(const std::ostream& os) {
+inline bool is_atty(const std::ostream& os) {
   FILE* std_stream = get_standard_stream(os);
-  if (std_stream==nullptr)
+  if (std_stream == nullptr)
     return false;
   else
     return ::isatty(fileno(std_stream));
 }
-bool should_color(std::ostream& os) {
-  return is_atty(os);
+inline bool should_color(std::ostream& os) { return is_atty(os); }
+inline std::string to_string(int num) {
+  if (num >= 10 || num < 0)
+    return std::to_string(num);
+  else
+    return '0' + std::to_string(num);
 }
-std::string to_string(int num) {
-  if (num >= 10 || num<0) return std::to_string(num);
-  else return '0' + std::to_string(num);
-}
-} // namespace helper
+}  // namespace helper
 namespace config {
-std::ostream* os = nullptr; // defer the init
+std::ostream* os = nullptr;  // defer the init
 std::size_t CONTAINER_LENGTH{10};
-std::string LOCATION_COLOR = "\033[32m"; // bold green
-std::string EXPRESSION_COLOR = "\033[0;36m"; // cyan
-std::string VALUE_COLOR = "\033[37m"; // white
-std::string MESSAGE_COLOR = "\033[1;32m"; // bold green
-std::string ERROR_COLOR = "\033[1;31m"; // bold red
-std::string TYPE_COLOR = "\033[1;34m"; // bold blue
+std::string LOCATION_COLOR = "\033[32m";      // bold green
+std::string EXPRESSION_COLOR = "\033[0;36m";  // cyan
+std::string VALUE_COLOR = "\033[37m";         // white
+std::string MESSAGE_COLOR = "\033[1;32m";     // bold green
+std::string ERROR_COLOR = "\033[1;31m";       // bold red
+std::string TYPE_COLOR = "\033[1;34m";        // bold blue
 std::string BACK_COLOR = "\033[44m";
 const std::string RESET_COLOR = "\033[0m";
 const std::string EMPTY_COLOR = "";
-bool colorized_out = isatty(2); //std::cerr
-void set_stream(std::ostream& redirect) {
+bool colorized_out = isatty(2);  // std::cerr
+inline void set_stream(std::ostream& redirect) {
   os = &(redirect);
   colorized_out = helper::is_atty(redirect);
 }
-void set_container_length(std::size_t length) {
-  CONTAINER_LENGTH = length;
-}
-void set_location_color(std::string color) {
-  LOCATION_COLOR = color;
-}
-void set_expression_color(std::string color) {
-  EXPRESSION_COLOR = color;
-}
-void set_value_color(std::string color) {
-  VALUE_COLOR = color;
-}
-void set_type_color(std::string color) {
-  TYPE_COLOR = color;
-}
-void set_message_color(std::string color) {
-  MESSAGE_COLOR = color;
-}
-void set_error_color(std::string color) {
-  ERROR_COLOR = color;
-}
-void set_back_color(std::string color) {
-  BACK_COLOR = color;
-}
-} // namespace config
+inline void set_container_length(std::size_t length) { CONTAINER_LENGTH = length; }
+inline void set_location_color(std::string color) { LOCATION_COLOR = color; }
+inline void set_expression_color(std::string color) { EXPRESSION_COLOR = color; }
+inline void set_value_color(std::string color) { VALUE_COLOR = color; }
+inline void set_type_color(std::string color) { TYPE_COLOR = color; }
+inline void set_message_color(std::string color) { MESSAGE_COLOR = color; }
+inline void set_error_color(std::string color) { ERROR_COLOR = color; }
+inline void set_back_color(std::string color) { BACK_COLOR = color; }
+}  // namespace config
 namespace helper {
-std::ostream& get_stream() {
-  return (config::os==nullptr ? std::cerr : *config::os);
-}
-} // namespace helper
-template<typename T>
+inline std::ostream& get_stream() { return (config::os == nullptr ? std::cerr : *config::os); }
+}  // namespace helper
+template <typename T>
 struct type {};
 
 template <int&... ExplicitArgumentBarrier, typename T>
-std::enable_if_t<!std::is_enum_v<T> && !std::is_union_v<T>, std::string>
-type_name(type<T>) {
+std::enable_if_t<!std::is_enum_v<T> && !std::is_union_v<T>, std::string> type_name(type<T>) {
   auto pretty_function = static_cast<std::string>(__PRETTY_FUNCTION__);
   const auto L = pretty_function.find("T = ") + 4;
   const auto R = pretty_function.find_last_of(";");
-  return pretty_function.substr(L, R-L);
+  return pretty_function.substr(L, R - L);
 }
 
 inline std::string type_name(type<short>) {
-  return "short"; //short int
+  return "short";  // short int
 }
 
 inline std::string type_name(type<unsigned short>) {
-  return "unsigned short"; //short unsigned int
+  return "unsigned short";  // short unsigned int
 }
 
 inline std::string type_name(type<long>) {
-  return "long"; //long int
+  return "long";  // long int
 }
 
 inline std::string type_name(type<unsigned long>) {
-  return "unsigned long"; // unsigned long int
+  return "unsigned long";  // unsigned long int
 }
 
 inline std::string type_name(type<long long>) {
-  return "long long"; // long long int
+  return "long long";  // long long int
 }
 
 inline std::string type_name(type<unsigned long long>) {
-  return "unsigned long long"; // unsigned long long int
+  return "unsigned long long";  // unsigned long long int
 }
 
 inline std::string type_name(type<std::string>) {
-  return "std::string"; // std::__cxx11::basic_string<char>
+  return "std::string";  // std::__cxx11::basic_string<char>
 }
 
 template <typename T>
@@ -170,22 +151,20 @@ std::string get_type_name() {
 }
 
 template <typename Enum>
-std::enable_if_t<std::is_enum_v<Enum>, std::string>
-type_name(type<Enum>) {
+std::enable_if_t<std::is_enum_v<Enum>, std::string> type_name(type<Enum>) {
   auto pretty_function = static_cast<std::string>(__PRETTY_FUNCTION__);
   const auto L = pretty_function.find("Enum = ") + 7;
   const auto R = pretty_function.find_last_of(";");
-  auto name = pretty_function.substr(L, R-L);
+  auto name = pretty_function.substr(L, R - L);
   return "enum " + name + ": " + get_type_name<std::underlying_type_t<Enum>>();
 }
 
 template <typename Union>
-std::enable_if_t<std::is_union_v<Union>, std::string>
-type_name(type<Union>) {
+std::enable_if_t<std::is_union_v<Union>, std::string> type_name(type<Union>) {
   auto pretty_function = static_cast<std::string>(__PRETTY_FUNCTION__);
   const auto L = pretty_function.find("Union = ") + 8;
   const auto R = pretty_function.find_last_of(";");
-  auto name = pretty_function.substr(L, R-L);
+  auto name = pretty_function.substr(L, R - L);
   return "union " + name;
 }
 
@@ -201,7 +180,7 @@ std::string type_name(type<std::vector<T>>) {
 
 template <typename T>
 inline std::string type_name(type<std::list<T>>) {
-  return "std::list<" + get_type_name<T>() + ">"; // std::__cxx11::list<T>
+  return "std::list<" + get_type_name<T>() + ">";  // std::__cxx11::list<T>
 }
 
 template <typename T>
@@ -246,27 +225,26 @@ std::string type_name(type<std::tuple<T...>>) {
   return "std::tuple<" + type_list_to_string<T...>() + ">";
 }
 namespace detail {
-template <class Default, class AlwaysVoid,
-          template<class...> class Op, class... Args>
+template <class Default, class AlwaysVoid, template <class...> class Op, class... Args>
 struct detector {
   using value_t = std::false_type;
   using type = Default;
 };
 
-template <class Default, template<class...> class Op, class... Args>
+template <class Default, template <class...> class Op, class... Args>
 struct detector<Default, std::void_t<Op<Args...>>, Op, Args...> {
   using value_t = std::true_type;
   using type = Op<Args...>;
 };
 
-} // namespace detail
+}  // namespace detail
 
 struct nonesuch {};
 
-template <template<class...> class Op, class... Args>
+template <template <class...> class Op, class... Args>
 using is_detected = typename detail::detector<nonesuch, void, Op, Args...>::value_t;
 
-template <template<class...> class Op, class... Args>
+template <template <class...> class Op, class... Args>
 constexpr bool is_detected_v = is_detected<Op, Args...>::value;
 
 template <typename T>
@@ -282,10 +260,10 @@ template <typename T>
 using detect_ostream_operator_t = decltype(std::declval<std::ostream&>() << std::declval<T>());
 
 template <typename T>
-constexpr bool is_container_v = std::conjunction_v<is_detected<detect_begin_t, T>,
-                                                is_detected<detect_end_t, T>,
-                                                is_detected<detect_size_t, T>,
-                                                std::negation<std::is_same<std::string, std::decay_t<T>>>>;
+constexpr bool is_container_v =
+    std::conjunction_v<is_detected<detect_begin_t, T>, is_detected<detect_end_t, T>,
+                       is_detected<detect_size_t, T>,
+                       std::negation<std::is_same<std::string, std::decay_t<T>>>>;
 template <typename T>
 constexpr bool has_ostream_operator = is_detected_v<detect_ostream_operator_t, T>;
 
@@ -294,24 +272,24 @@ template <std::size_t I>
 struct any_constructor {
   // -Wreturn-type
   template <typename T>
-  [[ noreturn ]]constexpr operator T&() const & noexcept {}
+  [[noreturn]] constexpr operator T&() const& noexcept {}
 };
 template <class T, std::size_t... I>
 constexpr auto enable_if_constructible_helper(std::index_sequence<I...>) noexcept
     -> decltype(T{any_constructor<I>{}...});
-template <class T, std::size_t N, class = decltype( enable_if_constructible_helper<T>(std::make_index_sequence<N>()) ) >
+template <class T, std::size_t N,
+          class = decltype(enable_if_constructible_helper<T>(std::make_index_sequence<N>()))>
 using enable_if_constructible_helper_t = std::size_t;
 
 template <typename T, std::size_t I0, std::size_t... I>
 constexpr auto fields_count(std::index_sequence<I0, I...>) noexcept
-  -> enable_if_constructible_helper_t<T, sizeof...(I) + 1>
-{
-  return sizeof...(I) + 1; // I0 + ...I
+    -> enable_if_constructible_helper_t<T, sizeof...(I) + 1> {
+  return sizeof...(I) + 1;  // I0 + ...I
 }
 template <typename T, std::size_t... I>
 constexpr std::size_t fields_count(std::index_sequence<I...>) noexcept {
-  if constexpr (sizeof...(I)>0) {
-    return fields_count<T>(std::make_index_sequence<sizeof...(I)-1>{});
+  if constexpr (sizeof...(I) > 0) {
+    return fields_count<T>(std::make_index_sequence<sizeof...(I) - 1>{});
   } else {
     return 0;
   }
@@ -403,72 +381,84 @@ constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 15> 
 template <typename T>
 constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 16> N1) noexcept {
   auto& [f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16] = t;
-  return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16);
+  return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15,
+                               f16);
 }
 // end auto generate code
 template <typename T>
 constexpr auto flatten_to_tuple(const T& t) noexcept {
   return flatten_impl(t, std::integral_constant<std::size_t, counter_impl<T>()>());
 }
-} // namespace flatten
+}  // namespace flatten
 namespace printer {
-std::string location_print(const std::string& s) {
-  if (config::colorized_out) return config::LOCATION_COLOR + s + config::RESET_COLOR;
-  else return s;
+inline std::string location_print(const std::string& s) {
+  if (config::colorized_out)
+    return config::LOCATION_COLOR + s + config::RESET_COLOR;
+  else
+    return s;
 }
-std::string expression_print(const std::string& s) {
-  if (config::colorized_out) return config::EXPRESSION_COLOR + s + config::RESET_COLOR;
-  else return s;
+inline std::string expression_print(const std::string& s) {
+  if (config::colorized_out)
+    return config::EXPRESSION_COLOR + s + config::RESET_COLOR;
+  else
+    return s;
 }
-std::string value_print(const std::string& s) {
-  if (config::colorized_out) return config::VALUE_COLOR + s + config::RESET_COLOR;
-  else return s;
+inline std::string value_print(const std::string& s) {
+  if (config::colorized_out)
+    return config::VALUE_COLOR + s + config::RESET_COLOR;
+  else
+    return s;
 }
-std::string type_print(const std::string& s) {
-  if (config::colorized_out) return config::TYPE_COLOR + s + config::RESET_COLOR;
-  else return s;
+inline std::string type_print(const std::string& s) {
+  if (config::colorized_out)
+    return config::TYPE_COLOR + s + config::RESET_COLOR;
+  else
+    return s;
 }
-std::string message_print(const std::string& s) {
-  if (config::colorized_out) return config::MESSAGE_COLOR + s + config::RESET_COLOR;
-  else return s;
+inline std::string message_print(const std::string& s) {
+  if (config::colorized_out)
+    return config::MESSAGE_COLOR + s + config::RESET_COLOR;
+  else
+    return s;
 }
-std::string error_print(const std::string& s) {
-  if (config::colorized_out) return config::ERROR_COLOR + s + config::RESET_COLOR;
-  else return s;
+inline std::string error_print(const std::string& s) {
+  if (config::colorized_out)
+    return config::ERROR_COLOR + s + config::RESET_COLOR;
+  else
+    return s;
 }
-std::string invisible_print(const std::string& s) {
-  if (config::colorized_out) return config::BACK_COLOR + s + config::RESET_COLOR;
-  else return s;
+inline std::string invisible_print(const std::string& s) {
+  if (config::colorized_out)
+    return config::BACK_COLOR + s + config::RESET_COLOR;
+  else
+    return s;
 }
 template <typename T>
-std::enable_if_t<has_ostream_operator<T>, void>
-basic_print(std::ostream& os, const T& value) {
+std::enable_if_t<has_ostream_operator<T>, void> basic_print(std::ostream& os, const T& value) {
   os << value;
 }
 
 template <typename T>
-std::enable_if_t<!has_ostream_operator<T>, void>
-basic_print(std::ostream& os, const T&) {
+std::enable_if_t<!has_ostream_operator<T>, void> basic_print(std::ostream& os, const T&) {
   os << printer::error_print("ostream operator << not support!");
 }
 
 template <typename T>
-std::enable_if_t<!is_container_v<const T&>
-              && !std::is_enum_v<T>
-              && !std::is_aggregate_v<const T> // ! NOTICE
-              , void>
+std::enable_if_t<!is_container_v<const T&> && !std::is_enum_v<T> &&
+                     !std::is_aggregate_v<const T>  // ! NOTICE
+                 ,
+                 void>
 print(std::ostream& os, const T& value) {
   basic_print(os, value);
 }
 
 // forward declaration for print
 template <typename Enum>
-std::enable_if_t<std::is_enum_v<Enum>, void>
-print(std::ostream& os, const Enum& value);
+std::enable_if_t<std::is_enum_v<Enum>, void> print(std::ostream& os, const Enum& value);
 
 template <typename Container>
-std::enable_if_t<is_container_v<const Container&>, void>
-print(std::ostream& os, const Container& value);
+std::enable_if_t<is_container_v<const Container&>, void> print(std::ostream& os,
+                                                               const Container& value);
 
 template <typename Aggregate>
 std::enable_if_t<std::is_aggregate_v<const Aggregate> && !is_container_v<const Aggregate&>, void>
@@ -486,19 +476,19 @@ void print(std::ostream& os, const std::stack<T>& value);
 template <typename T>
 void print(std::ostream& os, const std::queue<T>& value);
 
-void print(std::ostream& os, const std::string_view& value);
+inline void print(std::ostream& os, const std::string_view& value);
 
-void print(std::ostream& os, const std::string& value);
+inline void print(std::ostream& os, const std::string& value);
 
-void print(std::ostream& os, const char* const& value);
+inline void print(std::ostream& os, const char* const& value);
 
-void print(std::ostream& os, const char& value);
+inline void print(std::ostream& os, const char& value);
 
-void print(std::ostream& os, const signed char& value);
+inline void print(std::ostream& os, const signed char& value);
 
-void print(std::ostream& os, const unsigned char& value);
+inline void print(std::ostream& os, const unsigned char& value);
 
-void print(std::ostream& os, const std::nullptr_t& value);
+inline void print(std::ostream& os, const std::nullptr_t& value);
 
 template <typename T1, typename T2>
 void print(std::ostream& os, const std::pair<T1, T2>& value);
@@ -520,14 +510,13 @@ void print(std::ostream& os, const std::variant<Ts...>& value);
 // end of forward declaration for print
 
 template <typename Enum>
-std::enable_if_t<std::is_enum_v<Enum>, void>
-print(std::ostream& os, const Enum& value) {
+std::enable_if_t<std::is_enum_v<Enum>, void> print(std::ostream& os, const Enum& value) {
   print(os, static_cast<std::underlying_type_t<Enum>>(value));
 }
 
 template <typename Container>
-std::enable_if_t<is_container_v<const Container&>, void>
-print(std::ostream& os, const Container& value) {
+std::enable_if_t<is_container_v<const Container&>, void> print(std::ostream& os,
+                                                               const Container& value) {
   os << "{";
   const size_t size = std::size(value);
   const size_t n = std::min(config::CONTAINER_LENGTH, size);
@@ -555,18 +544,18 @@ print(std::ostream& os, const Aggregate& value) {
 
 template <size_t idx>
 struct print_tuple {
-  template<typename... Ts>
-  void operator() (std::ostream& os, const std::tuple<Ts...>& tuple) {
-    print_tuple<idx-1>()(os, tuple);
+  template <typename... Ts>
+  void operator()(std::ostream& os, const std::tuple<Ts...>& tuple) {
+    print_tuple<idx - 1>()(os, tuple);
     os << ", ";
     print(os, std::get<idx>(tuple));
   }
 };
 
-template<>
+template <>
 struct print_tuple<0> {
   template <typename... Ts>
-  void operator() (std::ostream& os, const std::tuple<Ts...>& tuple) {
+  void operator()(std::ostream& os, const std::tuple<Ts...>& tuple) {
     print(os, std::get<0>(tuple));
   }
 };
@@ -579,7 +568,7 @@ void print(std::ostream& os, const std::tuple<Ts...>& value) {
 }
 
 template <>
-void print(std::ostream& os, const std::tuple<>&) {
+inline void print(std::ostream& os, const std::tuple<>&) {
   os << "{}";
 }
 
@@ -593,7 +582,7 @@ void print(std::ostream& os, const std::stack<T>& value) {
     stk.pop();
 
     while (!stk.empty()) {
-      tmp << " ,"; // ! notice
+      tmp << " ,";  // ! notice
       print(tmp, stk.top());
       stk.pop();
     }
@@ -620,51 +609,40 @@ void print(std::ostream& os, const std::queue<T>& value) {
   os << '}';
 }
 
-void print(std::ostream& os, const std::string_view& value) {
+inline void print(std::ostream& os, const std::string_view& value) {
   os << '"' << static_cast<std::string>(value) << '"';
 }
 
-void print(std::ostream& os, const std::string& value) {
-  os << '"' << value << '"';
-}
+inline void print(std::ostream& os, const std::string& value) { os << '"' << value << '"'; }
 
-void print(std::ostream& os, const char* const& value) {
-  os << '"' << value << '"';
-}
+inline void print(std::ostream& os, const char* const& value) { os << '"' << value << '"'; }
 
-void print(std::ostream& os, const bool& value) {
+inline void print(std::ostream& os, const bool& value) {
   os << std::boolalpha << value << std::noboolalpha;
 }
 
-void print(std::ostream& os, const char& value) {
-  if (value>=0x20 && value<=0x7E) {
+inline void print(std::ostream& os, const char& value) {
+  if (value >= 0x20 && value <= 0x7E) {
     os << "'" << value << "'";
   } else {
-    os << printer::invisible_print("\u00b7"); // ·
+    os << printer::invisible_print("\u00b7");  // ·
   }
 }
 
-void print(std::ostream& os, const signed char& value) {
-  os << static_cast<int>(value);
-}
+inline void print(std::ostream& os, const signed char& value) { os << static_cast<int>(value); }
 
-void print(std::ostream& os, const unsigned char& value) {
-  os << static_cast<int>(value);
-}
+inline void print(std::ostream& os, const unsigned char& value) { os << static_cast<int>(value); }
 
-void print(std::ostream& os, const std::nullptr_t& value) {
-  os << "nullptr";
-}
+inline void print(std::ostream& os, const std::nullptr_t& value) { os << "nullptr"; }
 
 template <typename T>
 void print(std::ostream& os, T* const& value) {
-  if (value==nullptr) {
+  if (value == nullptr) {
     print(os, nullptr);
   } else {
     os << value;
   }
 }
-
 
 template <typename T1, typename T2>
 void print(std::ostream& os, const std::pair<T1, T2>& value) {
@@ -674,7 +652,6 @@ void print(std::ostream& os, const std::pair<T1, T2>& value) {
   print(os, value.second);
   os << "}";
 }
-
 
 template <typename T>
 void print(std::ostream& os, const std::optional<T>& value) {
@@ -705,13 +682,11 @@ void print(std::ostream& os, const std::variant<Ts...>& value) {
   os << "}";
 }
 
-} // namespace printer
+}  // namespace printer
 
 class timer {
-public:
-  static void start() {
-    start_tp = std::chrono::steady_clock::now();
-  }
+ public:
+  static void start() { start_tp = std::chrono::steady_clock::now(); }
   static void restart() {
     using namespace std::chrono_literals;
     cost = 0ms;
@@ -721,50 +696,49 @@ public:
     auto stop_tp = std::chrono::steady_clock::now();
     cost += std::chrono::duration_cast<std::chrono::milliseconds>(stop_tp - start_tp);
   }
-  static void log(std::string message="") {
+  static void log(std::string message = "") {
     helper::get_stream() << printer::location_print("[timer] ")
-                         << printer::message_print(message + " elapsed " + std::to_string(cost.count()) + "ms.\n");
+                         << printer::message_print(message + " elapsed " +
+                                                   std::to_string(cost.count()) + "ms.\n");
   }
   static void show() {
     const auto now = std::chrono::system_clock::now();
     auto t = std::chrono::system_clock::to_time_t(now);
     const std::tm* tm = std::localtime(&t);
     helper::get_stream() << printer::location_print("[timer] ")
-                         << printer::message_print("current time = "
-                              + helper::to_string(tm->tm_hour) + ':'
-                              + helper::to_string(tm->tm_min) + ':'
-                              + helper::to_string(tm->tm_sec) + '\n');
+                         << printer::message_print(
+                                "current time = " + helper::to_string(tm->tm_hour) + ':' +
+                                helper::to_string(tm->tm_min) + ':' +
+                                helper::to_string(tm->tm_sec) + '\n');
   }
-private:
+
+ private:
   static std::chrono::steady_clock::time_point start_tp;
   static std::chrono::milliseconds cost;
 };
-//static declaration
+// static declaration
 std::chrono::steady_clock::time_point timer::start_tp;
 std::chrono::milliseconds timer::cost;
 
 class debugHelper {
-public:
+ public:
   debugHelper(const char* function_name, int line) : os(helper::get_stream()) {
-    location = "[" + std::to_string(line)  + " (" + static_cast<std::string>(function_name) + ")]";
+    location = "[" + std::to_string(line) + " (" + static_cast<std::string>(function_name) + ")]";
   }
-  static void push_expr(const std::string& expr) {
-    exprs.emplace(expr);
-  }
-  static void push_type(const std::string& type) {
-    types.emplace(type);
-  }
+  static void push_expr(const std::string& expr) { exprs.emplace(expr); }
+  static void push_type(const std::string& type) { types.emplace(type); }
   template <typename... Ts>
   void print(Ts&&... values) {
-    if constexpr (sizeof...(values)>0) {
+    if constexpr (sizeof...(values) > 0) {
       os << printer::location_print(location) << " ";
       print_expand(values...);
     } else {
-      os << printer::message_print(std::string(100, '-')); // TODO
+      os << printer::message_print(std::string(100, '-'));  // TODO
     }
     os << '\n';
   }
-private:
+
+ private:
   static std::queue<std::string> exprs, types;
   std::string location;
   std::ostream& os;
@@ -824,7 +798,8 @@ private:
   void print_expand(type<T> head, Tail&&... tail) {
     exprs.pop();
 
-    os << printer::type_print(types.front() + " [sizeof " + std::to_string(sizeof(T)) + "]") << ", ";
+    os << printer::type_print(types.front() + " [sizeof " + std::to_string(sizeof(T)) + "]")
+       << ", ";
 
     types.pop();
 
@@ -834,7 +809,7 @@ private:
 
 std::queue<std::string> debugHelper::exprs, debugHelper::types;
 
-} // namespace dbg
+}  // namespace dbg
 
 #ifdef SINGLE
 #define dbg(x)                                                      \
@@ -850,21 +825,18 @@ std::queue<std::string> debugHelper::exprs, debugHelper::types;
 #define EXPAND2(arg) EXPAND3(EXPAND3(EXPAND3(EXPAND3(arg))))
 #define EXPAND3(arg) EXPAND4(EXPAND4(EXPAND4(EXPAND4(arg))))
 #define EXPAND4(arg) arg
-#define FOR_EACH(func, ...)                                    \
-  __VA_OPT__(EXPAND(FOR_EACH_HELPER(func, __VA_ARGS__)))
-#define FOR_EACH_HELPER(func, a1, ...)                         \
-  func(a1)                                                     \
-  __VA_OPT__(FOR_EACH_AGAIN PARENS (func, __VA_ARGS__))
+#define FOR_EACH(func, ...) __VA_OPT__(EXPAND(FOR_EACH_HELPER(func, __VA_ARGS__)))
+#define FOR_EACH_HELPER(func, a1, ...) func(a1) __VA_OPT__(FOR_EACH_AGAIN PARENS(func, __VA_ARGS__))
 #define FOR_EACH_AGAIN() FOR_EACH_HELPER
 
 #define DBG_SAVE_EXPR(x) dbg::debugHelper::push_expr(static_cast<std::string>(#x));
 #define DBG_SAVE_TYPE(x) dbg::debugHelper::push_type(dbg::get_type_name<decltype(x)>());
 
-#define dbg(...)                                              \
-  do {                                                        \
-    FOR_EACH(DBG_SAVE_EXPR, __VA_ARGS__)                      \
-    FOR_EACH(DBG_SAVE_TYPE, __VA_ARGS__)                      \
-    dbg::debugHelper(__func__, __LINE__).print(__VA_ARGS__);  \
+#define dbg(...)                                             \
+  do {                                                       \
+    FOR_EACH(DBG_SAVE_EXPR, __VA_ARGS__)                     \
+    FOR_EACH(DBG_SAVE_TYPE, __VA_ARGS__)                     \
+    dbg::debugHelper(__func__, __LINE__).print(__VA_ARGS__); \
   } while (false)
 
 #endif
