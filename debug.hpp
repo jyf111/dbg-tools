@@ -55,33 +55,53 @@ inline std::string to_string(int num) {
 }
 }  // namespace helper
 namespace config {
-std::ostream* os = nullptr;  // defer the init
-std::size_t CONTAINER_LENGTH{10};
-std::string LOCATION_COLOR = "\033[32m";      // bold green
-std::string EXPRESSION_COLOR = "\033[0;36m";  // cyan
-std::string VALUE_COLOR = "\033[37m";         // white
-std::string MESSAGE_COLOR = "\033[1;32m";     // bold green
-std::string ERROR_COLOR = "\033[1;31m";       // bold red
-std::string TYPE_COLOR = "\033[1;34m";        // bold blue
-std::string BACK_COLOR = "\033[44m";
-const std::string RESET_COLOR = "\033[0m";
-const std::string EMPTY_COLOR = "";
-bool colorized_out = isatty(2);  // std::cerr
-inline void set_stream(std::ostream& redirect) {
-  os = &(redirect);
-  colorized_out = helper::is_atty(redirect);
+struct option {
+  std::ostream* os = nullptr;  // defer the init
+  std::size_t CONTAINER_LENGTH{10};
+  std::string LOCATION_COLOR = "\033[32m";      // bold green
+  std::string EXPRESSION_COLOR = "\033[0;36m";  // cyan
+  std::string VALUE_COLOR = "\033[37m";         // white
+  std::string MESSAGE_COLOR = "\033[1;32m";     // bold green
+  std::string ERROR_COLOR = "\033[1;31m";       // bold red
+  std::string TYPE_COLOR = "\033[1;34m";        // bold blue
+  std::string BACK_COLOR = "\033[44m";          // blue background
+  const std::string RESET_COLOR = "\033[0m";    // reset
+  const std::string EMPTY_COLOR = "";
+  bool colorized_out = isatty(2);  // std::cerr
+};
+inline option& getter() {
+  static option global_opt;
+  return global_opt;
 }
-inline void set_container_length(std::size_t length) { CONTAINER_LENGTH = length; }
-inline void set_location_color(std::string color) { LOCATION_COLOR = color; }
-inline void set_expression_color(std::string color) { EXPRESSION_COLOR = color; }
-inline void set_value_color(std::string color) { VALUE_COLOR = color; }
-inline void set_type_color(std::string color) { TYPE_COLOR = color; }
-inline void set_message_color(std::string color) { MESSAGE_COLOR = color; }
-inline void set_error_color(std::string color) { ERROR_COLOR = color; }
-inline void set_back_color(std::string color) { BACK_COLOR = color; }
+inline std::ostream*& get_os() { return getter().os; }
+inline std::size_t& get_container_length() { return getter().CONTAINER_LENGTH; }
+inline std::string& get_location_color() { return getter().LOCATION_COLOR; }
+inline std::string& get_expression_color() { return getter().EXPRESSION_COLOR; }
+inline std::string& get_value_color() { return getter().VALUE_COLOR; }
+inline std::string& get_message_color() { return getter().MESSAGE_COLOR; }
+inline std::string& get_error_color() { return getter().ERROR_COLOR; }
+inline std::string& get_type_color() { return getter().TYPE_COLOR; }
+inline std::string& get_back_color() { return getter().BACK_COLOR; }
+inline const std::string get_reset_color() { return getter().RESET_COLOR; }
+inline const std::string get_empty_color() { return getter().EMPTY_COLOR; }
+inline bool& get_colorized_out() { return getter().colorized_out; }
+inline void set_stream(std::ostream& redirect) {
+  get_os() = &(redirect);
+  get_colorized_out() = helper::is_atty(redirect);
+}
+inline void set_container_length(std::size_t length) { get_container_length() = length; }
+inline void set_location_color(std::string color) { get_location_color() = color; }
+inline void set_expression_color(std::string color) { get_expression_color() = color; }
+inline void set_value_color(std::string color) { get_value_color() = color; }
+inline void set_message_color(std::string color) { get_message_color() = color; }
+inline void set_error_color(std::string color) { get_error_color() = color; }
+inline void set_type_color(std::string color) { get_type_color() = color; }
+inline void set_back_color(std::string color) { get_back_color() = color; }
 }  // namespace config
 namespace helper {
-inline std::ostream& get_stream() { return (config::os == nullptr ? std::cerr : *config::os); }
+inline std::ostream& get_stream() {
+  return (config::get_os() == nullptr ? std::cerr : *config::get_os());
+}
 }  // namespace helper
 template <typename T>
 struct type {};
@@ -392,44 +412,44 @@ constexpr auto flatten_to_tuple(const T& t) noexcept {
 }  // namespace flatten
 namespace printer {
 inline std::string location_print(const std::string& s) {
-  if (config::colorized_out)
-    return config::LOCATION_COLOR + s + config::RESET_COLOR;
+  if (config::get_colorized_out())
+    return config::get_location_color() + s + config::get_reset_color();
   else
     return s;
 }
 inline std::string expression_print(const std::string& s) {
-  if (config::colorized_out)
-    return config::EXPRESSION_COLOR + s + config::RESET_COLOR;
+  if (config::get_colorized_out())
+    return config::get_expression_color() + s + config::get_reset_color();
   else
     return s;
 }
 inline std::string value_print(const std::string& s) {
-  if (config::colorized_out)
-    return config::VALUE_COLOR + s + config::RESET_COLOR;
+  if (config::get_colorized_out())
+    return config::get_value_color() + s + config::get_reset_color();
   else
     return s;
 }
 inline std::string type_print(const std::string& s) {
-  if (config::colorized_out)
-    return config::TYPE_COLOR + s + config::RESET_COLOR;
+  if (config::get_colorized_out())
+    return config::get_type_color() + s + config::get_reset_color();
   else
     return s;
 }
 inline std::string message_print(const std::string& s) {
-  if (config::colorized_out)
-    return config::MESSAGE_COLOR + s + config::RESET_COLOR;
+  if (config::get_colorized_out())
+    return config::get_message_color() + s + config::get_reset_color();
   else
     return s;
 }
 inline std::string error_print(const std::string& s) {
-  if (config::colorized_out)
-    return config::ERROR_COLOR + s + config::RESET_COLOR;
+  if (config::get_colorized_out())
+    return config::get_error_color() + s + config::get_reset_color();
   else
     return s;
 }
 inline std::string invisible_print(const std::string& s) {
-  if (config::colorized_out)
-    return config::BACK_COLOR + s + config::RESET_COLOR;
+  if (config::get_colorized_out())
+    return config::get_back_color() + s + config::get_reset_color();
   else
     return s;
 }
@@ -468,7 +488,7 @@ template <typename... Ts>
 void print(std::ostream& os, const std::tuple<Ts...>& value);
 
 template <>
-void print(std::ostream& os, const std::tuple<>&);
+inline void print(std::ostream& os, const std::tuple<>&);
 
 template <typename T>
 void print(std::ostream& os, const std::stack<T>& value);
@@ -519,7 +539,7 @@ std::enable_if_t<is_container_v<const Container&>, void> print(std::ostream& os,
                                                                const Container& value) {
   os << "{";
   const size_t size = std::size(value);
-  const size_t n = std::min(config::CONTAINER_LENGTH, size);
+  const size_t n = std::min(config::get_container_length(), size);
   size_t i = 0;
   for (auto it = std::begin(value); it != std::end(value) && i < n; ++it, ++i) {
     print(os, *it);
@@ -684,12 +704,22 @@ void print(std::ostream& os, const std::variant<Ts...>& value) {
 
 }  // namespace printer
 
+struct timer_state {
+  std::chrono::steady_clock::time_point start_tp;
+  std::chrono::milliseconds cost{0};
+};
+inline timer_state& get_timer_state() {
+  static timer_state info;
+  return info;
+}
+
+#define start_tp get_timer_state().start_tp
+#define cost get_timer_state().cost
 class timer {
  public:
   static void start() { start_tp = std::chrono::steady_clock::now(); }
   static void restart() {
-    using namespace std::chrono_literals;
-    cost = 0ms;
+    cost = std::chrono::milliseconds(0);
     start();
   }
   static void stop() {
@@ -711,15 +741,21 @@ class timer {
                                 helper::to_string(tm->tm_min) + ':' +
                                 helper::to_string(tm->tm_sec) + '\n');
   }
-
- private:
-  static std::chrono::steady_clock::time_point start_tp;
-  static std::chrono::milliseconds cost;
 };
-// static declaration
-std::chrono::steady_clock::time_point timer::start_tp;
-std::chrono::milliseconds timer::cost;
+#undef start_tp
+#undef cost
 
+inline std::queue<std::string>& get_exprs() {
+  static std::queue<std::string> exprs;
+  return exprs;
+}
+inline std::queue<std::string>& get_types() {
+  static std::queue<std::string> types;
+  return types;
+}
+
+#define exprs get_exprs()
+#define types get_types()
 class debugHelper {
  public:
   debugHelper(const char* function_name, int line) : os(helper::get_stream()) {
@@ -739,7 +775,6 @@ class debugHelper {
   }
 
  private:
-  static std::queue<std::string> exprs, types;
   std::string location;
   std::ostream& os;
   template <typename Head>
@@ -806,8 +841,8 @@ class debugHelper {
     print_expand(tail...);
   }
 };
-
-std::queue<std::string> debugHelper::exprs, debugHelper::types;
+#undef types
+#undef exprs
 
 }  // namespace dbg
 
