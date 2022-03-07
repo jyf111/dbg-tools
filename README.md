@@ -31,17 +31,35 @@ int main() {
 ```
 ![demo](img/demo.png)
 ### features
-+ [x] [行号(函数名)]：表达式 = 值 (类型)
-+ [x] 多参数时放在同一行，用逗号分隔
-+ [x] 计时功能（timer 比如start、restart、show...）
-+ [x] config the ostream
-+ [x] config the output container length
-+ [x] config expression output color
-+ [x] POD easy output [magic-get]<https://www.youtube.com/watch?v=abdeAew3gmQ>(reflection)
-+ [x] empty debug (split line)
-+ [x] support for queue、stack...(string view、union、shared_ptr、uniqueptr、variant...)
++ [x] 完整且正确的类型名称（包括const、volatile、左值引用、右值引用、数组、指针...）
++ [x] 支持可变参数
++ [x] 计时功能（timer，支持start、restart、stop、log、show）
++ [x] 默认输出到std::cerr，可以重定向cerr到文件，或者通过dbg::config::set_stream(os)修改输出流
++ [x] 可以对输出的颜色进行配置
++ [x] 在多参数模式下，支持空参数(dbg())
++ [x] 支持各种容器的输出(STL、原生数组...)
++ [x] 聚合类型(is_aggregate_v\<T\>)可以直接输出各个成员(无需自定义operator<<)。原理就是借助SFINAE、聚合类型初始化以及结构化绑定。
 
 #### TODO
 1. 2进制、8进制、16进制输出整数
 2. for_each field?(may be)
-3. more test
+3. more tests
+
+#### weakness
+1. 为了显示传入的语句，并且更好的输出类型，只能使用宏，而多参数需要借助FOR_EACH_MACRO，容易导致报错信息过多（与宏展开有关）。多参数宏为了解决空参数问题，使用了__VA_OPT__，所以至少需要-std=c++2a。可以通过-DSINGLE指明使用单参数，此时需要-std=c++17，但是不支持空参数。
+2. 聚合类型中包含原生数组还存在问题。 TODO!
+3. 只支持unix，windows的colorize接口不一样
+```cpp
+// example
+struct st {
+  int a[2];
+};
+```
+4. 对于不可打印字符(<0x20||>0x7f)，用unicode字符·('\u00b7')代替，字符串中不可打印字符还没有进行替换(是否有必要这么做，需要考虑)
+5. 测试
+#### thanks for
++ [magic-get](https://www.youtube.com/watch?v=abdeAew3gmQ) <https://github.com/boostorg/pfr>
++ dbg-macro <https://github.com/sharkdp/dbg-macro>
+
+#### test
+![test](img/test.png)
