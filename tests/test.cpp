@@ -8,19 +8,33 @@ union gb_union {
   int x;
   short y;
 };
-struct element {
+struct gb_struct {
   int a;
   long b;
   double c;
   float d;
 };
-struct none {
-
+class gb_class_private {
+  int a = 2, b = 3, c = 1;
 };
-
+class gb_class {
+public:
+  int a;
+};
+struct none {};
 struct single {
   long one = 1;
 };
+namespace {
+struct A {
+  int a = 128, b = 0;
+};
+}
+namespace nps {
+struct B {
+  short c = -1;
+};
+}
 int main() {
   {
     dbg("test for timer");
@@ -193,7 +207,6 @@ int main() {
     dbg(ok);
     gb_enum g = bad;
     dbg(g);
-    //dbg(g);
     enum class color : char {
       RED = 1,
       BLUE = 2
@@ -205,30 +218,41 @@ int main() {
   }
   {
     dbg("test for aggregate type");
+    struct POD {
+      int a, b;
+    };
+    POD pod{1, 2};
+    dbg(pod.a);
+    dbg(pod.b);
+    dbg(pod);
+    gb_struct gs{1, 2, 3, 4};
+    dbg(gs);
+    gb_class_private gcp;
+    dbg(gcp);
+    dbg(std::is_aggregate_v<gb_class_private>);
+    gb_class gc{166};
+    dbg(gc);
+    dbg(std::is_aggregate_v<gb_class>);
+    none no;
+    dbg(no);
+    single sg;
+    dbg(sg);
+    dbg(A());
+    dbg(nps::B());
+    struct complex_data {
+      std::vector<int> vec;
+      struct inner {
+        int integer;
+      } in;
+      int *b;
+      const char* cs;
+      char ch;
+      std::string name;
+    };
+    int tmp = 6;
+    complex_data cd = {{1, 2, 3}, {123}, &tmp, "complex", 'P', "Alex"};
+    dbg(cd);
   }
-  // struct POD {
-  //   int a, b;
-  // };
-  // POD pod{1, 2};
-  // #ifndef SINGLE
-  // dbg(pod.a, pod.b);
-  // #endif
-  // short tmp = 0;
-  // volatile const short* place = &tmp;
-  // dbg(dbgtype(place));
-  // element ele{};
-  // #ifndef SINGLE
-  // dbg("test dbgtype:", dbgtype(ele), dbgtype(ud), dbgtype(gg));
-  // #endif
-  // dbg(pod);
-  // dbg(ele);
-  // single sg;
-  // none ne;
-  // #ifndef SINGLE
-  // dbg(sg, ne);
-  // #endif
-  // dbg(std::is_aggregate_v<const single&>);
-  // dbg("");
   {
     dbg("extra test");
     int x = 1;

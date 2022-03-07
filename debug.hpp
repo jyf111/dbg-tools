@@ -175,10 +175,6 @@ type_name(type<Enum>) {
   const auto L = pretty_function.find("Enum = ") + 7;
   const auto R = pretty_function.find_last_of(";");
   auto name = pretty_function.substr(L, R-L);
-  const auto pos = name.find_last_of("::");
-  if (pos!=std::string::npos) {
-    name = name.substr(pos+1);
-  }
   return "enum " + name + ": " + get_type_name<std::underlying_type_t<Enum>>();
 }
 
@@ -189,10 +185,6 @@ type_name(type<Union>) {
   const auto L = pretty_function.find("Union = ") + 8;
   const auto R = pretty_function.find_last_of(";");
   auto name = pretty_function.substr(L, R-L);
-  const auto pos = name.find_last_of("::");
-  if (pos!=std::string::npos) {
-    name = name.substr(pos+1);
-  }
   return "union " + name;
 }
 
@@ -299,109 +291,118 @@ constexpr bool has_ostream_operator = is_detected_v<detect_ostream_operator_t, T
 namespace flatten {
 template <std::size_t I>
 struct any_constructor {
+  // -Wreturn-type
   template <typename T>
-  [[ noreturn ]]constexpr operator T&() const noexcept {}
+  [[ noreturn ]]constexpr operator T&() const & noexcept {}
 };
+template <class T, std::size_t... I>
+constexpr auto enable_if_constructible_helper(std::index_sequence<I...>) noexcept
+    -> decltype(T{any_constructor<I>{}...});
+template <class T, std::size_t N, class = decltype( enable_if_constructible_helper<T>(std::make_index_sequence<N>()) ) >
+using enable_if_constructible_helper_t = std::size_t;
+
 template <typename T, std::size_t I0, std::size_t... I>
-constexpr auto fields_count(std::size_t& count, std::index_sequence<I0, I...>) noexcept
-  -> decltype(T{any_constructor<I0>{}, any_constructor<I>{}...}) 
+constexpr auto fields_count(std::index_sequence<I0, I...>) noexcept
+  -> enable_if_constructible_helper_t<T, sizeof...(I) + 1>
 {
-  count = sizeof...(I) + 1; // I0 + ...I
-  return T{};
+  return sizeof...(I) + 1; // I0 + ...I
 }
 template <typename T, std::size_t... I>
-constexpr void fields_count(std::size_t& count, std::index_sequence<I...>) noexcept {
+constexpr std::size_t fields_count(std::index_sequence<I...>) noexcept {
   if constexpr (sizeof...(I)>0) {
-    fields_count<T>(count, std::make_index_sequence<sizeof...(I)-1>{});
+    return fields_count<T>(std::make_index_sequence<sizeof...(I)-1>{});
   } else {
-    count = 0;
+    return 0;
   }
 }
 template <typename T>
 constexpr std::size_t counter_impl() noexcept {
-  std::size_t count = 0;
-  fields_count<T>(count, std::make_index_sequence<sizeof(T)>{});
-  return count;
+  return fields_count<T>(std::make_index_sequence<sizeof(T)>{});
 }
 // begin auto generate code
 template <typename T>
-constexpr auto flatten_impl(T&& t, std::integral_constant<std::size_t, 0> N1) noexcept {
+constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 0> N1) noexcept {
   return std::forward_as_tuple();
 }
 template <typename T>
-constexpr auto flatten_impl(T&& t, std::integral_constant<std::size_t, 1> N1) noexcept {
-  auto& [f1] = std::forward<T>(t);
+constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 1> N1) noexcept {
+  auto& [f1] = t;
   return std::forward_as_tuple(f1);
 }
 template <typename T>
-constexpr auto flatten_impl(T&& t, std::integral_constant<std::size_t, 2> N1) noexcept {
-  auto& [f1, f2] = std::forward<T>(t);
+constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 2> N1) noexcept {
+  auto& [f1, f2] = t;
   return std::forward_as_tuple(f1, f2);
 }
 template <typename T>
-constexpr auto flatten_impl(T&& t, std::integral_constant<std::size_t, 3> N1) noexcept {
-  auto& [f1, f2, f3] = std::forward<T>(t);
+constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 3> N1) noexcept {
+  auto& [f1, f2, f3] = t;
   return std::forward_as_tuple(f1, f2, f3);
 }
 template <typename T>
-constexpr auto flatten_impl(T&& t, std::integral_constant<std::size_t, 4> N1) noexcept {
-  auto& [f1, f2, f3, f4] = std::forward<T>(t);
+constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 4> N1) noexcept {
+  auto& [f1, f2, f3, f4] = t;
   return std::forward_as_tuple(f1, f2, f3, f4);
 }
 template <typename T>
-constexpr auto flatten_impl(T&& t, std::integral_constant<std::size_t, 5> N1) noexcept {
-  auto& [f1, f2, f3, f4, f5] = std::forward<T>(t);
+constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 5> N1) noexcept {
+  auto& [f1, f2, f3, f4, f5] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5);
 }
 template <typename T>
-constexpr auto flatten_impl(T&& t, std::integral_constant<std::size_t, 6> N1) noexcept {
-  auto& [f1, f2, f3, f4, f5, f6] = std::forward<T>(t);
+constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 6> N1) noexcept {
+  auto& [f1, f2, f3, f4, f5, f6] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5, f6);
 }
 template <typename T>
-constexpr auto flatten_impl(T&& t, std::integral_constant<std::size_t, 7> N1) noexcept {
-  auto& [f1, f2, f3, f4, f5, f6, f7] = std::forward<T>(t);
+constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 7> N1) noexcept {
+  auto& [f1, f2, f3, f4, f5, f6, f7] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7);
 }
 template <typename T>
-constexpr auto flatten_impl(T&& t, std::integral_constant<std::size_t, 8> N1) noexcept {
-  auto& [f1, f2, f3, f4, f5, f6, f7, f8] = std::forward<T>(t);
+constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 8> N1) noexcept {
+  auto& [f1, f2, f3, f4, f5, f6, f7, f8] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8);
 }
 template <typename T>
-constexpr auto flatten_impl(T&& t, std::integral_constant<std::size_t, 9> N1) noexcept {
-  auto& [f1, f2, f3, f4, f5, f6, f7, f8, f9] = std::forward<T>(t);
+constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 9> N1) noexcept {
+  auto& [f1, f2, f3, f4, f5, f6, f7, f8, f9] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9);
 }
 template <typename T>
-constexpr auto flatten_impl(T&& t, std::integral_constant<std::size_t, 10> N1) noexcept {
-  auto& [f1, f2, f3, f4, f5, f6, f7, f8, f9, f10] = std::forward<T>(t);
+constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 10> N1) noexcept {
+  auto& [f1, f2, f3, f4, f5, f6, f7, f8, f9, f10] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10);
 }
 template <typename T>
-constexpr auto flatten_impl(T&& t, std::integral_constant<std::size_t, 11> N1) noexcept {
-  auto& [f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11] = std::forward<T>(t);
+constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 11> N1) noexcept {
+  auto& [f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11);
 }
 template <typename T>
-constexpr auto flatten_impl(T&& t, std::integral_constant<std::size_t, 12> N1) noexcept {
-  auto& [f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12] = std::forward<T>(t);
+constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 12> N1) noexcept {
+  auto& [f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12);
 }
 template <typename T>
-constexpr auto flatten_impl(T&& t, std::integral_constant<std::size_t, 13> N1) noexcept {
-  auto& [f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13] = std::forward<T>(t);
+constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 13> N1) noexcept {
+  auto& [f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13);
 }
 template <typename T>
-constexpr auto flatten_impl(T&& t, std::integral_constant<std::size_t, 14> N1) noexcept {
-  auto& [f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14] = std::forward<T>(t);
+constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 14> N1) noexcept {
+  auto& [f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14);
 }
 template <typename T>
-constexpr auto flatten_impl(T&& t, std::integral_constant<std::size_t, 15> N1) noexcept {
-  auto& [f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15] = std::forward<T>(t);
+constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 15> N1) noexcept {
+  auto& [f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15);
+}
+template <typename T>
+constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 16> N1) noexcept {
+  auto& [f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16] = t;
+  return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16);
 }
 // end auto generate code
 template <typename T>
@@ -748,7 +749,7 @@ public:
       os << printer::location_print(location) << " ";
       print_expand(values...);
     } else {
-      os << printer::message_print("----------------------------------------"); // TODO
+      os << printer::message_print(std::string(100, '-')); // TODO
     }
     os << '\n';
   }

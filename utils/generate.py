@@ -1,4 +1,4 @@
-HEADER = "template <typename T>\nconstexpr auto flatten_impl(T&& t, std::integral_constant<std::size_t, 0> N1) noexcept {\n"
+HEADER = "template <typename T>\nconstexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 0> N1) noexcept {\n"
 index = HEADER.find('0')
 def gen_head(num):
   return HEADER[:index] + str(num) + HEADER[index+1:]
@@ -13,7 +13,7 @@ def gen_bind(num):
   if num==0:
     return ""
   else:
-    return "  auto& [" + gen_seq(num) + "] = std::forward<T>(t);\n"
+    return "  auto& [" + gen_seq(num) + "] = t;\n"
 def gen_return(num):
   return "  return std::forward_as_tuple(" + gen_seq(num) + ");\n}"
 
