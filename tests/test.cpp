@@ -1,9 +1,7 @@
-#include "../debug.hpp"
 #include <cassert>
-enum gb_enum {
-  bad,
-  ok
-};
+
+#include "../debug.hpp"
+enum gb_enum { bad, ok };
 union gb_union {
   int x;
   short y;
@@ -29,28 +27,29 @@ namespace {
 struct A {
   int a = 128, b = 0;
 };
-}
+}  // namespace
 namespace nps {
 struct B {
   short c = -1;
 };
-}
+}  // namespace nps
 int main() {
   {
     dbg("test for timer");
-    dbg::timer::start();
+    dbg::timer timer;
+    timer.start("start for loop");
     int sum = 0;
-    for (int i=1; i<10000000; i++) {
-      sum += rand()%i;
+    for (int i = 1; i < 100000000; i++) {
+      sum += rand() % i;
     }
-    dbg::timer::stop();
-    dbg::timer::log("for loop");
-    dbg::timer::restart();
-    for (int i=1; i<10000000; i++) {
-      sum += rand()%i;
+    timer.stop();
+    timer.log("for loop");
+    timer.restart("start for loop");
+    for (int i = 1; i < 10000000; i++) {
+      sum += rand() % i;
     }
-    dbg::timer::stop();
-    dbg::timer::log("for loop");
+    timer.stop();
+    timer.log("for loop");
     dbg::timer::show();
   }
   {
@@ -72,7 +71,7 @@ int main() {
     char ch = 'Y';
     int8_t byte = 202;
     const char* str = "hello";
-    const char str_arr[] = "world"; // equal to "world"
+    const char str_arr[] = "world";  // equal to "world"
     short st = 0;
     long long yyy = -2;
     volatile long long z = st;
@@ -80,9 +79,9 @@ int main() {
     long long& lf = yyy;
     long zz = 12312321;
     long double ldb = 0.000012313;
-    char invisible = '\x00';//static_cast<char>(130);
+    char invisible = '\x00';  // static_cast<char>(130);
     char& lchar = invisible;
-    const char* invisible_str = "\x80\x81\x82\x83\x90"; // TODO ?
+    const char* invisible_str = "\x80\x81\x82\x83\x90";  // TODO ?
     dbg(a);
     dbg(b);
     dbg(c);
@@ -124,9 +123,9 @@ int main() {
   }
   {
     dbg("test for container");
-    std::vector<int> vec{1, 2 ,3};
+    std::vector<int> vec{1, 2, 3};
     dbg(vec);
-    const std::vector<int> cvec{1, 2 ,3};
+    const std::vector<int> cvec{1, 2, 3};
     dbg(cvec);
     std::vector<long> empty_vec{};
     dbg(empty_vec);
@@ -139,8 +138,8 @@ int main() {
     dbg(dummy_list);
     std::vector<std::vector<int>> vec_of_vec_of_ints{{1, 2}, {3, 4, 5}};
     dbg(vec_of_vec_of_ints);
-    std::vector<std::vector<std::vector<int>>> vec_of_vec_of_vec_of_ints{
-        {{1, 2}, {3, 4, 5}}, {{3}}};
+    std::vector<std::vector<std::vector<int>>> vec_of_vec_of_vec_of_ints{{{1, 2}, {3, 4, 5}},
+                                                                         {{3}}};
     dbg(vec_of_vec_of_vec_of_ints);
     int dummy_int_array[] = {11, 22, 33};
     dbg(dummy_int_array);
@@ -150,20 +149,20 @@ int main() {
     dbg(multi_demension);
   }
   {
-  #ifndef SINGLE
+#ifndef SINGLE
     int a = 1, b = 2;
     short c = 30;
     char d = 'O';
     double e = 10.f;
     dbg("test for multiple variables");
-    dbg(); // empty -> split line
+    dbg();  // empty -> split line
     dbg(a, (b), (c), d, e);
     int tmparr[] = {1, 2, 3};
     std::initializer_list tmplist = {0, 9, -1, 2};
     dbg(tmparr, tmplist);
-    //dbg({1, 2, 3}, {0, 9, -1, 2}); // ! NOTICE
+    // dbg({1, 2, 3}, {0, 9, -1, 2}); // ! NOTICE
     dbg("first", a, "second", b, "third", c);
-  #endif
+#endif
   }
   {
     dbg("test for special STL container");
@@ -173,17 +172,20 @@ int main() {
     std::tuple<int, char, int8_t, char> tp4s{109, '\x23', 126, '\x0'};
     dbg(tp4s);
     std::queue<short> q;
-    q.push(1); q.push(20);
+    q.push(1);
+    q.push(20);
     dbg(q);
     std::array<unsigned long long, 4> arr{1, 10, 99, 87};
     dbg(arr);
     std::string_view sv("123Yio");
     dbg(sv);
     std::deque<long> dq;
-    dq.push_front(1); dq.push_back(-2);
+    dq.push_front(1);
+    dq.push_back(-2);
     dbg(dq);
     std::stack<uint64_t> stk;
-    stk.push(0); stk.push(999);
+    stk.push(0);
+    stk.push(999);
     dbg(stk);
     dbg(std::string_view{"test"});
     dbg(std::make_optional<bool>(false));
@@ -193,14 +195,14 @@ int main() {
     gb_union gb;
     gb.x = 2;
     dbg(gb.x);
-    union data{
+    union data {
       int n;
       char ch;
       double f;
     } ud;
     ud.f = 1.23;
     dbg(ud.f);
-    //dbg(ud); // ! cann't know the value
+    // dbg(ud); // ! cann't know the value
     dbg(dbgtype(ud));
   }
   {
@@ -209,10 +211,7 @@ int main() {
     dbg(ok);
     gb_enum g = bad;
     dbg(g);
-    enum class color : char {
-      RED = 1,
-      BLUE = 2
-    };
+    enum class color : char { RED = 1, BLUE = 2 };
     color c = color::RED;
     dbg(c);
     dbg(color::RED);
@@ -247,7 +246,7 @@ int main() {
         int integer;
         double decimal;
       } in;
-      int *b;
+      int* b;
       const char* cs;
       char ch;
       std::string name;
@@ -260,7 +259,7 @@ int main() {
     dbg("extra test");
     int x = 1;
     dbg(++x);
-    assert(x==2);
+    assert(x == 2);
     std::unique_ptr<int> uq_ptr = std::make_unique<int>(123);
     dbg(uq_ptr);
     std::shared_ptr<long> sh_ptr = std::make_shared<long>(29);
@@ -271,7 +270,7 @@ int main() {
     struct sp {
       int a[2] = {0, 1};
     };
-    //dbg(sp());
+    // dbg(sp());
   }
   return 0;
 }

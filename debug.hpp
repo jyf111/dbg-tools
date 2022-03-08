@@ -704,32 +704,39 @@ void print(std::ostream& os, const std::variant<Ts...>& value) {
 
 }  // namespace printer
 
-struct timer_state {
-  std::chrono::steady_clock::time_point start_tp;
-  std::chrono::milliseconds cost{0};
-};
-inline timer_state& get_timer_state() {
-  static timer_state info;
-  return info;
-}
-
-#define start_tp get_timer_state().start_tp
-#define cost get_timer_state().cost
 class timer {
- public:
-  static void start() { start_tp = std::chrono::steady_clock::now(); }
-  static void restart() {
-    cost = std::chrono::milliseconds(0);
-    start();
+public:
+  timer() : cost(0) {}
+  void start(std::string message = "") {
+    if (message.size()) {
+      helper::get_stream() << printer::location_print("[timer] ") << printer::message_print(message)
+                           << '\n';
+    }
+    start_tp = std::chrono::steady_clock::now();
   }
-  static void stop() {
+  void restart(std::string message = "") {
+    cost = std::chrono::milliseconds(0);
+    start(message);
+  }
+  void stop() {
     auto stop_tp = std::chrono::steady_clock::now();
     cost += std::chrono::duration_cast<std::chrono::milliseconds>(stop_tp - start_tp);
   }
-  static void log(std::string message = "") {
-    helper::get_stream() << printer::location_print("[timer] ")
-                         << printer::message_print(message + " elapsed " +
-                                                   std::to_string(cost.count()) + "ms.\n");
+  void log(std::string message = "") {
+    helper::get_stream() << printer::location_print("[timer] ");
+    if (message.size()) {
+      helper::get_stream() << printer::message_print(message) << ' ';
+    }
+    auto mins = std::chrono::duration_cast<std::chrono::minutes>(cost);
+    helper::get_stream() << printer::message_print("elapsed ");
+    if (mins.count()) {
+      helper::get_stream() << printer::message_print(std::to_string(mins.count()) + "min");
+    }
+    auto secs = std::chrono::duration_cast<std::chrono::seconds>(cost-mins);
+    if (secs.count()) {
+      helper::get_stream() << printer::message_print(std::to_string(secs.count()) + "s");
+    }
+    helper::get_stream() << printer::message_print(std::to_string((cost-mins-secs).count()) + "ms\n");
   }
   static void show() {
     const auto now = std::chrono::system_clock::now();
@@ -741,9 +748,11 @@ class timer {
                                 helper::to_string(tm->tm_min) + ':' +
                                 helper::to_string(tm->tm_sec) + '\n');
   }
+
+private:
+  std::chrono::steady_clock::time_point start_tp;
+  std::chrono::milliseconds cost;
 };
-#undef start_tp
-#undef cost
 
 inline std::queue<std::string>& get_exprs() {
   static std::queue<std::string> exprs;
@@ -757,7 +766,7 @@ inline std::queue<std::string>& get_types() {
 #define exprs get_exprs()
 #define types get_types()
 class debugHelper {
- public:
+public:
   debugHelper(const char* function_name, int line) : os(helper::get_stream()) {
     location = "[" + std::to_string(line) + " (" + static_cast<std::string>(function_name) + ")]";
   }
@@ -774,7 +783,7 @@ class debugHelper {
     os << '\n';
   }
 
- private:
+private:
   std::string location;
   std::ostream& os;
   template <typename Head>
