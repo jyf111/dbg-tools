@@ -732,11 +732,12 @@ public:
     if (mins.count()) {
       helper::get_stream() << printer::message_print(std::to_string(mins.count()) + "min");
     }
-    auto secs = std::chrono::duration_cast<std::chrono::seconds>(cost-mins);
+    auto secs = std::chrono::duration_cast<std::chrono::seconds>(cost - mins);
     if (secs.count()) {
       helper::get_stream() << printer::message_print(std::to_string(secs.count()) + "s");
     }
-    helper::get_stream() << printer::message_print(std::to_string((cost-mins-secs).count()) + "ms\n");
+    helper::get_stream() << printer::message_print(std::to_string((cost - mins - secs).count()) +
+                                                   "ms\n");
   }
   static void show() {
     const auto now = std::chrono::system_clock::now();
@@ -767,8 +768,14 @@ inline std::queue<std::string>& get_types() {
 #define types get_types()
 class debugHelper {
 public:
-  debugHelper(const char* function_name, int line) : os(helper::get_stream()) {
-    location = "[" + std::to_string(line) + " (" + static_cast<std::string>(function_name) + ")]";
+  debugHelper(const char* file_name, const char* function_name, int line)
+      : os(helper::get_stream()) {
+    std::string file(file_name);
+    if (file.size() > MAX_LENGTH) {
+      file = ".." + file.substr(file.size() - MAX_LENGTH, MAX_LENGTH);
+    }
+    location = "[" + file + ":" + std::to_string(line) + " (" +
+               static_cast<std::string>(function_name) + ")]";
   }
   static void push_expr(const std::string& expr) { exprs.emplace(expr); }
   static void push_type(const std::string& type) { types.emplace(type); }
@@ -849,6 +856,8 @@ private:
 
     print_expand(tail...);
   }
+
+  static constexpr std::size_t MAX_LENGTH = 20;
 };
 #undef types
 #undef exprs
@@ -860,7 +869,7 @@ private:
   do {                                                              \
     dbg::debugHelper::push_expr(static_cast<std::string>(#x));      \
     dbg::debugHelper::push_type(dbg::get_type_name<decltype(x)>()); \
-    dbg::debugHelper(__func__, __LINE__).print(x);                  \
+    dbg::debugHelper(__FILE__, __func__, __LINE__).print(x);        \
   } while (false)
 #else
 #define PARENS ()
@@ -876,11 +885,11 @@ private:
 #define DBG_SAVE_EXPR(x) dbg::debugHelper::push_expr(static_cast<std::string>(#x));
 #define DBG_SAVE_TYPE(x) dbg::debugHelper::push_type(dbg::get_type_name<decltype(x)>());
 
-#define dbg(...)                                             \
-  do {                                                       \
-    FOR_EACH(DBG_SAVE_EXPR, __VA_ARGS__)                     \
-    FOR_EACH(DBG_SAVE_TYPE, __VA_ARGS__)                     \
-    dbg::debugHelper(__func__, __LINE__).print(__VA_ARGS__); \
+#define dbg(...)                                                       \
+  do {                                                                 \
+    FOR_EACH(DBG_SAVE_EXPR, __VA_ARGS__)                               \
+    FOR_EACH(DBG_SAVE_TYPE, __VA_ARGS__)                               \
+    dbg::debugHelper(__FILE__, __func__, __LINE__).print(__VA_ARGS__); \
   } while (false)
 
 #endif
