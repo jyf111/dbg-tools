@@ -4,7 +4,8 @@
 #ifdef SINGLE
 static_assert(__cplusplus >= 201703L, "Sry, -std=c++17 should be supported");
 #else
-static_assert(__cplusplus > 201703L, "Sry, because of __VA_OPT__, -std=c++2a should be supported");
+static_assert(__cplusplus > 201703L,
+              "Sry, because of __VA_OPT__, -std=c++2a should be supported");
 #endif
 
 #if defined(WIN32)  // TODO
@@ -29,6 +30,7 @@ static_assert(false, "Sry, only support for unix");
 #include <tuple>
 #include <variant>
 #include <vector>
+#include <string_view>
 
 namespace dbg {
 namespace helper {
@@ -89,11 +91,19 @@ inline void set_stream(std::ostream& redirect) {
   get_os() = &(redirect);
   get_colorized_out() = helper::is_atty(redirect);
 }
-inline void set_container_length(std::size_t length) { get_container_length() = length; }
-inline void set_location_color(std::string color) { get_location_color() = color; }
-inline void set_expression_color(std::string color) { get_expression_color() = color; }
+inline void set_container_length(std::size_t length) {
+  get_container_length() = length;
+}
+inline void set_location_color(std::string color) {
+  get_location_color() = color;
+}
+inline void set_expression_color(std::string color) {
+  get_expression_color() = color;
+}
 inline void set_value_color(std::string color) { get_value_color() = color; }
-inline void set_message_color(std::string color) { get_message_color() = color; }
+inline void set_message_color(std::string color) {
+  get_message_color() = color;
+}
 inline void set_error_color(std::string color) { get_error_color() = color; }
 inline void set_type_color(std::string color) { get_type_color() = color; }
 inline void set_back_color(std::string color) { get_back_color() = color; }
@@ -107,7 +117,8 @@ template <typename T>
 struct type {};
 
 template <int&... ExplicitArgumentBarrier, typename T>
-std::enable_if_t<!std::is_enum_v<T> && !std::is_union_v<T>, std::string> type_name(type<T>) {
+std::enable_if_t<!std::is_enum_v<T> && !std::is_union_v<T>, std::string>
+type_name(type<T>) {
   auto pretty_function = static_cast<std::string>(__PRETTY_FUNCTION__);
   const auto L = pretty_function.find("T = ") + 4;
   const auto R = pretty_function.find_last_of(";");
@@ -146,9 +157,11 @@ template <typename T>
 std::string get_type_name() {
   if (std::is_volatile<T>::value) {
     if (std::is_pointer<T>::value) {
-      return get_type_name<typename std::remove_volatile<T>::type>() + " volatile";
+      return get_type_name<typename std::remove_volatile<T>::type>() +
+             " volatile";
     } else {
-      return "volatile " + get_type_name<typename std::remove_volatile<T>::type>();
+      return "volatile " +
+             get_type_name<typename std::remove_volatile<T>::type>();
     }
   }
   if (std::is_const<T>::value) {
@@ -231,7 +244,8 @@ std::string type_name(type<std::pair<T1, T2>>) {
 template <typename... T>
 std::string type_list_to_string() {
   std::string result;
-  [[maybe_unused]] auto unused = {(result += get_type_name<T>() + ", ", 0)..., 0};
+  [[maybe_unused]] auto unused = {(result += get_type_name<T>() + ", ", 0)...,
+                                  0};
 
   if constexpr (sizeof...(T) > 0) {
     result.pop_back();
@@ -245,7 +259,8 @@ std::string type_name(type<std::tuple<T...>>) {
   return "std::tuple<" + type_list_to_string<T...>() + ">";
 }
 namespace detail {
-template <class Default, class AlwaysVoid, template <class...> class Op, class... Args>
+template <class Default, class AlwaysVoid, template <class...> class Op,
+          class... Args>
 struct detector {
   using value_t = std::false_type;
   using type = Default;
@@ -262,7 +277,8 @@ struct detector<Default, std::void_t<Op<Args...>>, Op, Args...> {
 struct nonesuch {};
 
 template <template <class...> class Op, class... Args>
-using is_detected = typename detail::detector<nonesuch, void, Op, Args...>::value_t;
+using is_detected =
+    typename detail::detector<nonesuch, void, Op, Args...>::value_t;
 
 template <template <class...> class Op, class... Args>
 constexpr bool is_detected_v = is_detected<Op, Args...>::value;
@@ -277,15 +293,17 @@ template <typename T>
 using detect_size_t = decltype(std::size(std::declval<T>()));
 
 template <typename T>
-using detect_ostream_operator_t = decltype(std::declval<std::ostream&>() << std::declval<T>());
+using detect_ostream_operator_t =
+    decltype(std::declval<std::ostream&>() << std::declval<T>());
 
 template <typename T>
-constexpr bool is_container_v =
-    std::conjunction_v<is_detected<detect_begin_t, T>, is_detected<detect_end_t, T>,
-                       is_detected<detect_size_t, T>,
-                       std::negation<std::is_same<std::string, std::decay_t<T>>>>;
+constexpr bool is_container_v = std::conjunction_v<
+    is_detected<detect_begin_t, T>, is_detected<detect_end_t, T>,
+    is_detected<detect_size_t, T>,
+    std::negation<std::is_same<std::string, std::decay_t<T>>>>;
 template <typename T>
-constexpr bool has_ostream_operator = is_detected_v<detect_ostream_operator_t, T>;
+constexpr bool has_ostream_operator =
+    is_detected_v<detect_ostream_operator_t, T>;
 
 namespace flatten {
 template <std::size_t I>
@@ -295,10 +313,11 @@ struct any_constructor {
   [[noreturn]] constexpr operator T&() const& noexcept {}
 };
 template <class T, std::size_t... I>
-constexpr auto enable_if_constructible_helper(std::index_sequence<I...>) noexcept
-    -> decltype(T{any_constructor<I>{}...});
+constexpr auto enable_if_constructible_helper(
+    std::index_sequence<I...>) noexcept -> decltype(T{any_constructor<I>{}...});
 template <class T, std::size_t N,
-          class = decltype(enable_if_constructible_helper<T>(std::make_index_sequence<N>()))>
+          class = decltype(
+              enable_if_constructible_helper<T>(std::make_index_sequence<N>()))>
 using enable_if_constructible_helper_t = std::size_t;
 
 template <typename T, std::size_t I0, std::size_t... I>
@@ -320,94 +339,117 @@ constexpr std::size_t counter_impl() noexcept {
 }
 // begin auto generate code
 template <typename T>
-constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 0> N1) noexcept {
+constexpr auto flatten_impl(
+    const T& t, std::integral_constant<std::size_t, 0> N1) noexcept {
   return std::forward_as_tuple();
 }
 template <typename T>
-constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 1> N1) noexcept {
+constexpr auto flatten_impl(
+    const T& t, std::integral_constant<std::size_t, 1> N1) noexcept {
   auto& [f1] = t;
   return std::forward_as_tuple(f1);
 }
 template <typename T>
-constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 2> N1) noexcept {
+constexpr auto flatten_impl(
+    const T& t, std::integral_constant<std::size_t, 2> N1) noexcept {
   auto& [f1, f2] = t;
   return std::forward_as_tuple(f1, f2);
 }
 template <typename T>
-constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 3> N1) noexcept {
+constexpr auto flatten_impl(
+    const T& t, std::integral_constant<std::size_t, 3> N1) noexcept {
   auto& [f1, f2, f3] = t;
   return std::forward_as_tuple(f1, f2, f3);
 }
 template <typename T>
-constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 4> N1) noexcept {
+constexpr auto flatten_impl(
+    const T& t, std::integral_constant<std::size_t, 4> N1) noexcept {
   auto& [f1, f2, f3, f4] = t;
   return std::forward_as_tuple(f1, f2, f3, f4);
 }
 template <typename T>
-constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 5> N1) noexcept {
+constexpr auto flatten_impl(
+    const T& t, std::integral_constant<std::size_t, 5> N1) noexcept {
   auto& [f1, f2, f3, f4, f5] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5);
 }
 template <typename T>
-constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 6> N1) noexcept {
+constexpr auto flatten_impl(
+    const T& t, std::integral_constant<std::size_t, 6> N1) noexcept {
   auto& [f1, f2, f3, f4, f5, f6] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5, f6);
 }
 template <typename T>
-constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 7> N1) noexcept {
+constexpr auto flatten_impl(
+    const T& t, std::integral_constant<std::size_t, 7> N1) noexcept {
   auto& [f1, f2, f3, f4, f5, f6, f7] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7);
 }
 template <typename T>
-constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 8> N1) noexcept {
+constexpr auto flatten_impl(
+    const T& t, std::integral_constant<std::size_t, 8> N1) noexcept {
   auto& [f1, f2, f3, f4, f5, f6, f7, f8] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8);
 }
 template <typename T>
-constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 9> N1) noexcept {
+constexpr auto flatten_impl(
+    const T& t, std::integral_constant<std::size_t, 9> N1) noexcept {
   auto& [f1, f2, f3, f4, f5, f6, f7, f8, f9] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9);
 }
 template <typename T>
-constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 10> N1) noexcept {
+constexpr auto flatten_impl(
+    const T& t, std::integral_constant<std::size_t, 10> N1) noexcept {
   auto& [f1, f2, f3, f4, f5, f6, f7, f8, f9, f10] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10);
 }
 template <typename T>
-constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 11> N1) noexcept {
+constexpr auto flatten_impl(
+    const T& t, std::integral_constant<std::size_t, 11> N1) noexcept {
   auto& [f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11);
 }
 template <typename T>
-constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 12> N1) noexcept {
+constexpr auto flatten_impl(
+    const T& t, std::integral_constant<std::size_t, 12> N1) noexcept {
   auto& [f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12] = t;
-  return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12);
+  return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11,
+                               f12);
 }
 template <typename T>
-constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 13> N1) noexcept {
+constexpr auto flatten_impl(
+    const T& t, std::integral_constant<std::size_t, 13> N1) noexcept {
   auto& [f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13] = t;
-  return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13);
+  return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11,
+                               f12, f13);
 }
 template <typename T>
-constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 14> N1) noexcept {
+constexpr auto flatten_impl(
+    const T& t, std::integral_constant<std::size_t, 14> N1) noexcept {
   auto& [f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14] = t;
-  return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14);
+  return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11,
+                               f12, f13, f14);
 }
 template <typename T>
-constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 15> N1) noexcept {
+constexpr auto flatten_impl(
+    const T& t, std::integral_constant<std::size_t, 15> N1) noexcept {
   auto& [f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15] = t;
-  return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15);
+  return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11,
+                               f12, f13, f14, f15);
 }
 template <typename T>
-constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 16> N1) noexcept {
-  auto& [f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16] = t;
-  return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15,
-                               f16);
+constexpr auto flatten_impl(
+    const T& t, std::integral_constant<std::size_t, 16> N1) noexcept {
+  auto& [f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15,
+         f16] = t;
+  return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11,
+                               f12, f13, f14, f15, f16);
 }
 // end auto generate code
 template <typename T>
 constexpr auto flatten_to_tuple(const T& t) noexcept {
-  return flatten_impl(t, std::integral_constant<std::size_t, counter_impl<T>()>());
+  return flatten_impl(t,
+                      std::integral_constant<std::size_t, counter_impl<T>()>());
 }
 }  // namespace flatten
 namespace printer {
@@ -454,12 +496,14 @@ inline std::string invisible_print(const std::string& s) {
     return s;
 }
 template <typename T>
-std::enable_if_t<has_ostream_operator<T>, void> basic_print(std::ostream& os, const T& value) {
+std::enable_if_t<has_ostream_operator<T>, void> basic_print(std::ostream& os,
+                                                            const T& value) {
   os << value;
 }
 
 template <typename T>
-std::enable_if_t<!has_ostream_operator<T>, void> basic_print(std::ostream& os, const T&) {
+std::enable_if_t<!has_ostream_operator<T>, void> basic_print(std::ostream& os,
+                                                             const T&) {
   os << printer::error_print("ostream operator << not support!");
 }
 
@@ -474,14 +518,17 @@ print(std::ostream& os, const T& value) {
 
 // forward declaration for print
 template <typename Enum>
-std::enable_if_t<std::is_enum_v<Enum>, void> print(std::ostream& os, const Enum& value);
+std::enable_if_t<std::is_enum_v<Enum>, void> print(std::ostream& os,
+                                                   const Enum& value);
 
 template <typename Container>
-std::enable_if_t<is_container_v<const Container&>, void> print(std::ostream& os,
-                                                               const Container& value);
+std::enable_if_t<is_container_v<const Container&>, void> print(
+    std::ostream& os, const Container& value);
 
 template <typename Aggregate>
-std::enable_if_t<std::is_aggregate_v<const Aggregate> && !is_container_v<const Aggregate&>, void>
+std::enable_if_t<std::is_aggregate_v<const Aggregate> &&
+                     !is_container_v<const Aggregate&>,
+                 void>
 print(std::ostream& os, const Aggregate& value);
 
 template <typename... Ts>
@@ -530,13 +577,14 @@ void print(std::ostream& os, const std::variant<Ts...>& value);
 // end of forward declaration for print
 
 template <typename Enum>
-std::enable_if_t<std::is_enum_v<Enum>, void> print(std::ostream& os, const Enum& value) {
+std::enable_if_t<std::is_enum_v<Enum>, void> print(std::ostream& os,
+                                                   const Enum& value) {
   print(os, static_cast<std::underlying_type_t<Enum>>(value));
 }
 
 template <typename Container>
-std::enable_if_t<is_container_v<const Container&>, void> print(std::ostream& os,
-                                                               const Container& value) {
+std::enable_if_t<is_container_v<const Container&>, void> print(
+    std::ostream& os, const Container& value) {
   os << "{";
   const size_t size = std::size(value);
   const size_t n = std::min(config::get_container_length(), size);
@@ -557,7 +605,9 @@ std::enable_if_t<is_container_v<const Container&>, void> print(std::ostream& os,
 }
 
 template <typename Aggregate>
-std::enable_if_t<std::is_aggregate_v<const Aggregate> && !is_container_v<const Aggregate&>, void>
+std::enable_if_t<std::is_aggregate_v<const Aggregate> &&
+                     !is_container_v<const Aggregate&>,
+                 void>
 print(std::ostream& os, const Aggregate& value) {
   print(os, flatten::flatten_to_tuple(value));
 }
@@ -633,9 +683,13 @@ inline void print(std::ostream& os, const std::string_view& value) {
   os << '"' << static_cast<std::string>(value) << '"';
 }
 
-inline void print(std::ostream& os, const std::string& value) { os << '"' << value << '"'; }
+inline void print(std::ostream& os, const std::string& value) {
+  os << '"' << value << '"';
+}
 
-inline void print(std::ostream& os, const char* const& value) { os << '"' << value << '"'; }
+inline void print(std::ostream& os, const char* const& value) {
+  os << '"' << value << '"';
+}
 
 inline void print(std::ostream& os, const bool& value) {
   os << std::boolalpha << value << std::noboolalpha;
@@ -649,11 +703,17 @@ inline void print(std::ostream& os, const char& value) {
   }
 }
 
-inline void print(std::ostream& os, const signed char& value) { os << static_cast<int>(value); }
+inline void print(std::ostream& os, const signed char& value) {
+  os << static_cast<int>(value);
+}
 
-inline void print(std::ostream& os, const unsigned char& value) { os << static_cast<int>(value); }
+inline void print(std::ostream& os, const unsigned char& value) {
+  os << static_cast<int>(value);
+}
 
-inline void print(std::ostream& os, const std::nullptr_t& value) { os << "nullptr"; }
+inline void print(std::ostream& os, const std::nullptr_t& value) {
+  os << "nullptr";
+}
 
 template <typename T>
 void print(std::ostream& os, T* const& value) {
@@ -705,12 +765,12 @@ void print(std::ostream& os, const std::variant<Ts...>& value) {
 }  // namespace printer
 
 class timer {
-public:
+ public:
   timer() : cost(0) {}
   void start(std::string message = "") {
     if (message.size()) {
-      helper::get_stream() << printer::location_print("[timer] ") << printer::message_print(message)
-                           << '\n';
+      helper::get_stream() << printer::location_print("[timer] ")
+                           << printer::message_print(message) << '\n';
     }
     start_tp = std::chrono::steady_clock::now();
   }
@@ -720,24 +780,18 @@ public:
   }
   void stop() {
     auto stop_tp = std::chrono::steady_clock::now();
-    cost += std::chrono::duration_cast<std::chrono::milliseconds>(stop_tp - start_tp);
+    cost += std::chrono::duration_cast<std::chrono::milliseconds>(stop_tp -
+                                                                  start_tp);
   }
   void log(std::string message = "") {
     helper::get_stream() << printer::location_print("[timer] ");
     if (message.size()) {
       helper::get_stream() << printer::message_print(message) << ' ';
     }
-    auto mins = std::chrono::duration_cast<std::chrono::minutes>(cost);
-    helper::get_stream() << printer::message_print("elapsed ");
-    if (mins.count()) {
-      helper::get_stream() << printer::message_print(std::to_string(mins.count()) + "min");
-    }
-    auto secs = std::chrono::duration_cast<std::chrono::seconds>(cost - mins);
-    if (secs.count()) {
-      helper::get_stream() << printer::message_print(std::to_string(secs.count()) + "s");
-    }
-    helper::get_stream() << printer::message_print(std::to_string((cost - mins - secs).count()) +
-                                                   "ms\n");
+    auto secs = std::chrono::duration_cast<std::chrono::seconds>(cost);
+    helper::get_stream() << printer::message_print(
+        std::to_string(secs.count()) + '.' +
+        std::to_string((cost - secs).count()) + "s\n");
   }
   static void show() {
     const auto now = std::chrono::system_clock::now();
@@ -745,14 +799,15 @@ public:
     const std::tm* tm = std::localtime(&t);
     helper::get_stream() << printer::location_print("[timer] ")
                          << printer::message_print(
-                                "current time = " + helper::to_string(tm->tm_hour) + ':' +
+                                "current time = " +
+                                helper::to_string(tm->tm_hour) + ':' +
                                 helper::to_string(tm->tm_min) + ':' +
                                 helper::to_string(tm->tm_sec) + '\n');
   }
 
-private:
-  std::chrono::steady_clock::time_point start_tp;
+ private:
   std::chrono::milliseconds cost;
+  std::chrono::steady_clock::time_point start_tp;
 };
 
 inline std::queue<std::string>& get_exprs() {
@@ -767,15 +822,15 @@ inline std::queue<std::string>& get_types() {
 #define exprs get_exprs()
 #define types get_types()
 class debugHelper {
-public:
+ public:
   debugHelper(const char* file_name, const char* function_name, int line)
       : os(helper::get_stream()) {
     std::string file(file_name);
     if (file.size() > MAX_LENGTH) {
       file = ".." + file.substr(file.size() - MAX_LENGTH, MAX_LENGTH);
     }
-    location = "[" + file + ":" + std::to_string(line) + " (" +
-               static_cast<std::string>(function_name) + ")]";
+    location =
+        "[" + file + ":" + std::to_string(line) + " (" + function_name + ")]";
   }
   static void push_expr(const std::string& expr) { exprs.emplace(expr); }
   static void push_type(const std::string& type) { types.emplace(type); }
@@ -785,14 +840,12 @@ public:
       os << printer::location_print(location) << " ";
       print_expand(values...);
     } else {
-      os << printer::message_print(std::string(100, '-'));  // TODO
+      os << printer::message_print(std::string(100, '='));
     }
     os << '\n';
   }
 
-private:
-  std::string location;
-  std::ostream& os;
+ private:
   template <typename Head>
   void print_expand(Head&& head) {
     os << printer::expression_print(exprs.front()) << " = ";
@@ -817,7 +870,8 @@ private:
   void print_expand(type<T> head) {
     exprs.pop();
 
-    os << printer::type_print(types.front() + " [sizeof " + std::to_string(sizeof(T)) + "]");
+    os << printer::type_print(types.front() + " [sizeof " +
+                              std::to_string(sizeof(T)) + "]");
 
     types.pop();
   }
@@ -849,13 +903,17 @@ private:
   void print_expand(type<T> head, Tail&&... tail) {
     exprs.pop();
 
-    os << printer::type_print(types.front() + " [sizeof " + std::to_string(sizeof(T)) + "]")
+    os << printer::type_print(types.front() + " [sizeof " +
+                              std::to_string(sizeof(T)) + "]")
        << ", ";
 
     types.pop();
 
     print_expand(tail...);
   }
+
+  std::ostream& os;
+  std::string location;
 
   static constexpr std::size_t MAX_LENGTH = 20;
 };
@@ -878,12 +936,16 @@ private:
 #define EXPAND2(arg) EXPAND3(EXPAND3(EXPAND3(EXPAND3(arg))))
 #define EXPAND3(arg) EXPAND4(EXPAND4(EXPAND4(EXPAND4(arg))))
 #define EXPAND4(arg) arg
-#define FOR_EACH(func, ...) __VA_OPT__(EXPAND(FOR_EACH_HELPER(func, __VA_ARGS__)))
-#define FOR_EACH_HELPER(func, a1, ...) func(a1) __VA_OPT__(FOR_EACH_AGAIN PARENS(func, __VA_ARGS__))
+#define FOR_EACH(func, ...) \
+  __VA_OPT__(EXPAND(FOR_EACH_HELPER(func, __VA_ARGS__)))
+#define FOR_EACH_HELPER(func, a1, ...) \
+  func(a1) __VA_OPT__(FOR_EACH_AGAIN PARENS(func, __VA_ARGS__))
 #define FOR_EACH_AGAIN() FOR_EACH_HELPER
 
-#define DBG_SAVE_EXPR(x) dbg::debugHelper::push_expr(static_cast<std::string>(#x));
-#define DBG_SAVE_TYPE(x) dbg::debugHelper::push_type(dbg::get_type_name<decltype(x)>());
+#define DBG_SAVE_EXPR(x) \
+  dbg::debugHelper::push_expr(static_cast<std::string>(#x));
+#define DBG_SAVE_TYPE(x) \
+  dbg::debugHelper::push_type(dbg::get_type_name<decltype(x)>());
 
 #define dbg(...)                                                       \
   do {                                                                 \
