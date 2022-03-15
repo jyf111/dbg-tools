@@ -253,9 +253,9 @@ int main() {
     };
     int tmp = 6;
     complex_data cd = {{1, 2, 3}, &tmp, "complex", 'P', "Alex"};
-    std::cout << dbg::flatten::counter_impl<complex_data>() << '\n';
-    std::cout << dbg::flatten::specific_counter_impl<complex_data, 0>() << '\n';
-    std::cout << dbg::flatten::unique_counter_impl<complex_data>() << '\n';
+    // std::cout << dbg::flatten::counter_impl<complex_data>() << '\n';
+    // std::cout << dbg::flatten::specific_counter_impl<complex_data, 1>() << '\n';
+    // std::cout << dbg::flatten::unique_counter_impl<complex_data>() << '\n';
     dbg(cd);
   }
   {

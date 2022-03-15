@@ -15,13 +15,14 @@ build/test
 struct data {
   int a, b, c;
   std::string d;
+  int arr[3];
 };
 int main() {
   int a = 2;
   short b = 3;
   int& ref = a;
   long&& rref = 4l;
-  data d{1, 2, 3, "hello"};
+  data d{1, 2, 3, "hello", {6, 0, 8}};
 #ifndef SINGLE
   dbg(a, b);
   dbg(d);
@@ -61,6 +62,15 @@ dbg({1, 3, 4}); dbg(data{1, 2});
 3. 只支持unix。windows的colorize接口不一样
 4. 测试
 5. 在自动序列化聚合类型时，会生成大量模板（正比于sizeof(T)），所以如果聚合类型的大小很大，可能会导致编译速度极慢
+6. 为了支持聚合类型内数组成员的正确序列化，目前嵌套结构体就会出问题。如下结构体outer，只会计算出1个域，此时结构化绑定就出问题了。
+```cpp
+struct outer {
+  struct inner {
+    int a, b;
+  } in;
+  int c;
+};
+```
 #### thanks for
 + [magic-get](https://www.youtube.com/watch?v=abdeAew3gmQ) <https://github.com/boostorg/pfr>
 + dbg-macro <https://github.com/sharkdp/dbg-macro>
