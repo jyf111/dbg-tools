@@ -256,6 +256,20 @@ int main() {
     dbg(cd);
   }
   {
+    dbg("test for base output");
+    char value = 110;
+    short neg = -12;
+    std::cout << dbg::get_type_name<decltype(bad)>() << '\n';
+    dbg(dbg::hex(value));
+    dbg(dbg::hex(neg));
+    std::string str = "123";
+    dbg(dbg::hex(str));
+    dbg(dbg::bin(value));
+    dbg(dbg::bin(neg));
+    dbg(dbg::oct(value));
+    dbg(dbg::oct(neg));
+  }
+  {
     dbg("extra test");
     int x = 1;
     dbg(++x);
@@ -271,6 +285,10 @@ int main() {
       int a[2] = {0, 1};
     };
     // dbg(sp());
+    std::map<std::string, int> mp;
+    dbg(mp);
+    std::set<std::string> st;
+    dbg(st);
   }
   return 0;
 }

@@ -25,4 +25,5 @@ endif()
 target_include_directories(test
 PRIVATE
   ${PROJECT_SOURCE_DIR}
+  ${PROJECT_SOURCE_DIR}/include
 )

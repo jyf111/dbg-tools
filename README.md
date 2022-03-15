@@ -44,11 +44,11 @@ int main() {
 + [x] 在多参数模式下，支持空参数(dbg())，依靠__VA_OPT__
 + [x] 支持各种容器的输出(STL、原生数组...)
 + [x] 聚合类型(is_aggregate_v\<T\>)可以直接输出各个成员(无需自定义operator<<)。原理就是借助SFINAE、聚合类型初始化以及结构化绑定。
++ [x] 2进制、8进制、16进制输出整数
 
 #### TODO
-1. 2进制、8进制、16进制输出整数
-2. for_each field?(may be)
-3. more tests
+1. for_each field?(may be)
+2. more tests
 
 #### weakness
 1. 为了显示传入的语句，并且更好的输出类型，只能使用宏，而多参数需要借助FOR_EACH_MACRO，容易导致报错信息过多（与宏展开有关）。多参数宏为了解决空参数问题，使用了__VA_OPT__，所以至少需要-std=c++2a。可以通过-DSINGLE指明使用单参数，此时需要-std=c++17，但是不支持空参数。
@@ -65,7 +65,7 @@ struct st {
 };
 ```
 4. 只支持unix。windows的colorize接口不一样
-5. 对于不可打印字符(<0x20||>0x7f)，用unicode字符·('\u00b7')代替，字符串中不可打印字符还没有进行替换(是否有必要这么做，需要考虑)
+5. 对于不可打印字符(<0x20||>0x7f)，用\x的十六进制转移+蓝色背景颜色显示（包括字符串中的不可见字符）
 6. 测试
 #### thanks for
 + [magic-get](https://www.youtube.com/watch?v=abdeAew3gmQ) <https://github.com/boostorg/pfr>

@@ -15,22 +15,26 @@ static_assert(false, "Sry, only support for unix");
 #include <unistd.h>
 
 #include <algorithm>
+#include <bitset>
 #include <chrono>
 #include <cstring>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <list>
+#include <map>
 #include <memory>
 #include <optional>
 #include <queue>
+#include <set>
 #include <sstream>
 #include <stack>
 #include <string>
 #include <tuple>
+#include <unordered_map>
+#include <unordered_set>
 #include <variant>
 #include <vector>
-#include <string_view>
 
 namespace dbg {
 namespace helper {
@@ -41,6 +45,7 @@ inline FILE* get_standard_stream(const std::ostream& os) {
     return stderr;
   return nullptr;
 }
+
 inline bool is_atty(const std::ostream& os) {
   FILE* std_stream = get_standard_stream(os);
   if (std_stream == nullptr)
@@ -48,8 +53,10 @@ inline bool is_atty(const std::ostream& os) {
   else
     return ::isatty(fileno(std_stream));
 }
-inline bool should_color(std::ostream& os) { return is_atty(os); }
-inline std::string to_string(int num) {
+
+inline bool should_color(const std::ostream& os) { return is_atty(os); }
+
+inline std::string to_string(const int num) {
   if (num >= 10 || num < 0)
     return std::to_string(num);
   else
@@ -71,10 +78,12 @@ struct option {
   const std::string EMPTY_COLOR = "";
   bool colorized_out = isatty(2);  // std::cerr
 };
+
 inline option& getter() {
   static option global_opt;
   return global_opt;
 }
+
 inline std::ostream*& get_os() { return getter().os; }
 inline std::size_t& get_container_length() { return getter().CONTAINER_LENGTH; }
 inline std::string& get_location_color() { return getter().LOCATION_COLOR; }
@@ -87,6 +96,7 @@ inline std::string& get_back_color() { return getter().BACK_COLOR; }
 inline const std::string get_reset_color() { return getter().RESET_COLOR; }
 inline const std::string get_empty_color() { return getter().EMPTY_COLOR; }
 inline bool& get_colorized_out() { return getter().colorized_out; }
+
 inline void set_stream(std::ostream& redirect) {
   get_os() = &(redirect);
   get_colorized_out() = helper::is_atty(redirect);
@@ -94,35 +104,61 @@ inline void set_stream(std::ostream& redirect) {
 inline void set_container_length(std::size_t length) {
   get_container_length() = length;
 }
-inline void set_location_color(std::string color) {
+inline void set_location_color(const std::string& color) {
   get_location_color() = color;
 }
-inline void set_expression_color(std::string color) {
+inline void set_expression_color(const std::string& color) {
   get_expression_color() = color;
 }
-inline void set_value_color(std::string color) { get_value_color() = color; }
-inline void set_message_color(std::string color) {
+inline void set_value_color(const std::string& color) {
+  get_value_color() = color;
+}
+inline void set_message_color(const std::string& color) {
   get_message_color() = color;
 }
-inline void set_error_color(std::string color) { get_error_color() = color; }
-inline void set_type_color(std::string color) { get_type_color() = color; }
-inline void set_back_color(std::string color) { get_back_color() = color; }
+inline void set_error_color(const std::string& color) {
+  get_error_color() = color;
+}
+inline void set_type_color(const std::string& color) {
+  get_type_color() = color;
+}
+inline void set_back_color(const std::string& color) {
+  get_back_color() = color;
+}
 }  // namespace config
 namespace helper {
 inline std::ostream& get_stream() {
   return (config::get_os() == nullptr ? std::cerr : *config::get_os());
 }
 }  // namespace helper
+
+template <typename T>
+struct hex {
+  hex(T _val) : val(_val) {}
+  T val;
+};
+
+template <typename T>
+struct oct {
+  oct(T _val) : val(_val) {}
+  T val;
+};
+
+template <typename T>
+struct bin {
+  bin(T _val) : val(_val) {}
+  T val;
+};
 template <typename T>
 struct type {};
 
 template <int&... ExplicitArgumentBarrier, typename T>
 std::enable_if_t<!std::is_enum_v<T> && !std::is_union_v<T>, std::string>
 type_name(type<T>) {
-  auto pretty_function = static_cast<std::string>(__PRETTY_FUNCTION__);
+  std::string_view pretty_function(__PRETTY_FUNCTION__);
   const auto L = pretty_function.find("T = ") + 4;
-  const auto R = pretty_function.find_last_of(";");
-  return pretty_function.substr(L, R - L);
+  const auto R = pretty_function.find_last_of(';');
+  return std::string(pretty_function.substr(L, R - L));
 }
 
 inline std::string type_name(type<short>) {
@@ -180,27 +216,28 @@ std::string get_type_name() {
   if (std::is_rvalue_reference<T>::value) {
     return get_type_name<typename std::remove_reference<T>::type>() + "&&";
   }
-  return type_name(type<T>());
+  return type_name(type<T>());  // thanks for ADL
 }
 
 template <typename Enum>
 std::enable_if_t<std::is_enum_v<Enum>, std::string> type_name(type<Enum>) {
-  auto pretty_function = static_cast<std::string>(__PRETTY_FUNCTION__);
+  std::string_view pretty_function(__PRETTY_FUNCTION__);
   const auto L = pretty_function.find("Enum = ") + 7;
-  const auto R = pretty_function.find_last_of(";");
-  auto name = pretty_function.substr(L, R - L);
+  const auto R = pretty_function.find_last_of(';');
+  std::string name(pretty_function.substr(L, R - L));
   return "enum " + name + ": " + get_type_name<std::underlying_type_t<Enum>>();
 }
 
 template <typename Union>
 std::enable_if_t<std::is_union_v<Union>, std::string> type_name(type<Union>) {
-  auto pretty_function = static_cast<std::string>(__PRETTY_FUNCTION__);
+  std::string_view pretty_function(__PRETTY_FUNCTION__);
   const auto L = pretty_function.find("Union = ") + 8;
-  const auto R = pretty_function.find_last_of(";");
-  auto name = pretty_function.substr(L, R - L);
+  const auto R = pretty_function.find_last_of(';');
+  std::string name(pretty_function.substr(L, R - L));
   return "union " + name;
 }
 
+// template specialize
 template <typename T>
 std::string type_name(type<type<T>>) {
   return get_type_name<T>();
@@ -241,6 +278,16 @@ std::string type_name(type<std::pair<T1, T2>>) {
   return "std::pair<" + get_type_name<T1>() + ", " + get_type_name<T2>() + ">";
 }
 
+template <typename Key>
+std::string type_name(type<std::set<Key>>) {
+  return "std::set<" + get_type_name<Key>() + ">";
+}
+
+template <typename Key, typename T>
+std::string type_name(type<std::map<Key, T>>) {
+  return "std::map<" + get_type_name<Key>() + ", " + get_type_name<T>() + ">";
+}
+
 template <typename... T>
 std::string type_list_to_string() {
   std::string result;
@@ -258,7 +305,13 @@ template <typename... T>
 std::string type_name(type<std::tuple<T...>>) {
   return "std::tuple<" + type_list_to_string<T...>() + ">";
 }
-namespace detail {
+
+template <typename T>
+std::string type_name(type<hex<T>>) {
+  return get_type_name<T>();
+}
+
+namespace helper {
 template <class Default, class AlwaysVoid, template <class...> class Op,
           class... Args>
 struct detector {
@@ -272,13 +325,13 @@ struct detector<Default, std::void_t<Op<Args...>>, Op, Args...> {
   using type = Op<Args...>;
 };
 
-}  // namespace detail
+}  // namespace helper
 
 struct nonesuch {};
 
 template <template <class...> class Op, class... Args>
 using is_detected =
-    typename detail::detector<nonesuch, void, Op, Args...>::value_t;
+    typename helper::detector<nonesuch, void, Op, Args...>::value_t;
 
 template <template <class...> class Op, class... Args>
 constexpr bool is_detected_v = is_detected<Op, Args...>::value;
@@ -301,6 +354,7 @@ constexpr bool is_container_v = std::conjunction_v<
     is_detected<detect_begin_t, T>, is_detected<detect_end_t, T>,
     is_detected<detect_size_t, T>,
     std::negation<std::is_same<std::string, std::decay_t<T>>>>;
+
 template <typename T>
 constexpr bool has_ostream_operator =
     is_detected_v<detect_ostream_operator_t, T>;
@@ -312,9 +366,11 @@ struct any_constructor {
   template <typename T>
   [[noreturn]] constexpr operator T&() const& noexcept {}
 };
+
 template <class T, std::size_t... I>
 constexpr auto enable_if_constructible_helper(
     std::index_sequence<I...>) noexcept -> decltype(T{any_constructor<I>{}...});
+
 template <class T, std::size_t N,
           class = decltype(
               enable_if_constructible_helper<T>(std::make_index_sequence<N>()))>
@@ -325,6 +381,7 @@ constexpr auto fields_count(std::index_sequence<I0, I...>) noexcept
     -> enable_if_constructible_helper_t<T, sizeof...(I) + 1> {
   return sizeof...(I) + 1;  // I0 + ...I
 }
+
 template <typename T, std::size_t... I>
 constexpr std::size_t fields_count(std::index_sequence<I...>) noexcept {
   if constexpr (sizeof...(I) > 0) {
@@ -333,16 +390,19 @@ constexpr std::size_t fields_count(std::index_sequence<I...>) noexcept {
     return 0;
   }
 }
+
 template <typename T>
 constexpr std::size_t counter_impl() noexcept {
   return fields_count<T>(std::make_index_sequence<sizeof(T)>{});
 }
+
 // begin auto generate code
 template <typename T>
 constexpr auto flatten_impl(
     const T& t, std::integral_constant<std::size_t, 0> N1) noexcept {
   return std::forward_as_tuple();
 }
+
 template <typename T>
 constexpr auto flatten_impl(
     const T& t, std::integral_constant<std::size_t, 1> N1) noexcept {
@@ -446,12 +506,15 @@ constexpr auto flatten_impl(
                                f12, f13, f14, f15, f16);
 }
 // end auto generate code
+
 template <typename T>
 constexpr auto flatten_to_tuple(const T& t) noexcept {
   return flatten_impl(t,
                       std::integral_constant<std::size_t, counter_impl<T>()>());
 }
+
 }  // namespace flatten
+
 namespace printer {
 inline std::string location_print(const std::string& s) {
   if (config::get_colorized_out())
@@ -495,6 +558,18 @@ inline std::string invisible_print(const std::string& s) {
   else
     return s;
 }
+
+inline void print_char(std::ostream& os, const char& value) {
+  if (value >= 0x20 && value <= 0x7E) {
+    os << value;
+  } else {
+    std::ostringstream tmp;
+    tmp << "\\x" << std::setw(2) << std::setfill('0') << std::hex
+        << std::uppercase << (0xFF & value);
+    os << invisible_print(tmp.str());
+  }
+}
+
 template <typename T>
 std::enable_if_t<has_ostream_operator<T>, void> basic_print(std::ostream& os,
                                                             const T& value) {
@@ -508,10 +583,8 @@ std::enable_if_t<!has_ostream_operator<T>, void> basic_print(std::ostream& os,
 }
 
 template <typename T>
-std::enable_if_t<!is_container_v<const T&> && !std::is_enum_v<T> &&
-                     !std::is_aggregate_v<const T>  // ! NOTICE
-                 ,
-                 void>
+std::enable_if_t<
+    !is_container_v<T> && !std::is_enum_v<T> && !std::is_aggregate_v<T>, void>
 print(std::ostream& os, const T& value) {
   basic_print(os, value);
 }
@@ -522,12 +595,11 @@ std::enable_if_t<std::is_enum_v<Enum>, void> print(std::ostream& os,
                                                    const Enum& value);
 
 template <typename Container>
-std::enable_if_t<is_container_v<const Container&>, void> print(
-    std::ostream& os, const Container& value);
+std::enable_if_t<is_container_v<Container>, void> print(std::ostream& os,
+                                                        const Container& value);
 
 template <typename Aggregate>
-std::enable_if_t<std::is_aggregate_v<const Aggregate> &&
-                     !is_container_v<const Aggregate&>,
+std::enable_if_t<std::is_aggregate_v<Aggregate> && !is_container_v<Aggregate>,
                  void>
 print(std::ostream& os, const Aggregate& value);
 
@@ -543,9 +615,9 @@ void print(std::ostream& os, const std::stack<T>& value);
 template <typename T>
 void print(std::ostream& os, const std::queue<T>& value);
 
-inline void print(std::ostream& os, const std::string_view& value);
-
 inline void print(std::ostream& os, const std::string& value);
+
+inline void print(std::ostream& os, const std::string_view& value);
 
 inline void print(std::ostream& os, const char* const& value);
 
@@ -583,7 +655,7 @@ std::enable_if_t<std::is_enum_v<Enum>, void> print(std::ostream& os,
 }
 
 template <typename Container>
-std::enable_if_t<is_container_v<const Container&>, void> print(
+std::enable_if_t<is_container_v<Container>, void> print(
     std::ostream& os, const Container& value) {
   os << "{";
   const size_t size = std::size(value);
@@ -605,8 +677,7 @@ std::enable_if_t<is_container_v<const Container&>, void> print(
 }
 
 template <typename Aggregate>
-std::enable_if_t<std::is_aggregate_v<const Aggregate> &&
-                     !is_container_v<const Aggregate&>,
+std::enable_if_t<std::is_aggregate_v<Aggregate> && !is_container_v<Aggregate>,
                  void>
 print(std::ostream& os, const Aggregate& value) {
   print(os, flatten::flatten_to_tuple(value));
@@ -679,16 +750,18 @@ void print(std::ostream& os, const std::queue<T>& value) {
   os << '}';
 }
 
-inline void print(std::ostream& os, const std::string_view& value) {
-  os << '"' << static_cast<std::string>(value) << '"';
+inline void print(std::ostream& os, const std::string& value) {
+  os << '"';
+  for (const auto& c : value) print_char(os, c);
+  os << '"';
 }
 
-inline void print(std::ostream& os, const std::string& value) {
-  os << '"' << value << '"';
+inline void print(std::ostream& os, const std::string_view& value) {
+  print(os, std::string(value));
 }
 
 inline void print(std::ostream& os, const char* const& value) {
-  os << '"' << value << '"';
+  print(os, std::string(value));
 }
 
 inline void print(std::ostream& os, const bool& value) {
@@ -696,11 +769,9 @@ inline void print(std::ostream& os, const bool& value) {
 }
 
 inline void print(std::ostream& os, const char& value) {
-  if (value >= 0x20 && value <= 0x7E) {
-    os << "'" << value << "'";
-  } else {
-    os << printer::invisible_print("\u00b7");  // ·
-  }
+  os << "'";
+  print_char(os, value);
+  os << "'";
 }
 
 inline void print(std::ostream& os, const signed char& value) {
@@ -762,11 +833,61 @@ void print(std::ostream& os, const std::variant<Ts...>& value) {
   os << "}";
 }
 
+template <typename T>
+std::enable_if_t<std::is_integral_v<T>, void> print(std::ostream& os,
+                                                    const hex<T>& value) {
+  std::ostringstream tmp;
+  tmp << std::hex << std::showbase << std::uppercase;
+  if constexpr (sizeof(T) == 1) {
+    tmp << static_cast<int>(value.val);
+  } else {
+    tmp << value.val;
+  }
+  os << tmp.str();
+}
+
+template <typename T>
+std::enable_if_t<!std::is_integral_v<T>, void> print(std::ostream& os,
+                                                     const hex<T>& value) {
+  os << error_print("hex only support for integral type!");
+}
+
+template <typename T>
+std::enable_if_t<std::is_integral_v<T>, void> print(std::ostream& os,
+                                                    const oct<T>& value) {
+  std::ostringstream tmp;
+  tmp << std::oct << std::showbase << std::uppercase;
+  if constexpr (sizeof(T) == 1) {
+    tmp << static_cast<int>(value.val);
+  } else {
+    tmp << value.val;
+  }
+  os << tmp.str();
+}
+
+template <typename T>
+std::enable_if_t<!std::is_integral_v<T>, void> print(std::ostream& os,
+                                                     const oct<T>& value) {
+  os << error_print("oct only support for integral type!");
+}
+
+template <typename T>
+std::enable_if_t<std::is_integral_v<T>, void> print(std::ostream& os,
+                                                    const bin<T>& value) {
+  os << "0B" << std::bitset<sizeof(T)>(value.val);
+}
+
+template <typename T>
+std::enable_if_t<!std::is_integral_v<T>, void> print(std::ostream& os,
+                                                     const bin<T>& value) {
+  os << error_print("bin only support for integral type!");
+}
 }  // namespace printer
 
 class timer {
  public:
   timer() : cost(0) {}
+
   void start(std::string message = "") {
     if (message.size()) {
       helper::get_stream() << printer::location_print("[timer] ")
@@ -774,15 +895,18 @@ class timer {
     }
     start_tp = std::chrono::steady_clock::now();
   }
+
   void restart(std::string message = "") {
     cost = std::chrono::milliseconds(0);
     start(message);
   }
+
   void stop() {
     auto stop_tp = std::chrono::steady_clock::now();
     cost += std::chrono::duration_cast<std::chrono::milliseconds>(stop_tp -
                                                                   start_tp);
   }
+
   void log(std::string message = "") {
     helper::get_stream() << printer::location_print("[timer] ");
     if (message.size()) {
@@ -793,6 +917,7 @@ class timer {
         std::to_string(secs.count()) + '.' +
         std::to_string((cost - secs).count()) + "s\n");
   }
+
   static void show() {
     const auto now = std::chrono::system_clock::now();
     auto t = std::chrono::system_clock::to_time_t(now);
@@ -832,8 +957,10 @@ class debugHelper {
     location =
         "[" + file + ":" + std::to_string(line) + " (" + function_name + ")]";
   }
+
   static void push_expr(const std::string& expr) { exprs.emplace(expr); }
   static void push_type(const std::string& type) { types.emplace(type); }
+
   template <typename... Ts>
   void print(Ts&&... values) {
     if constexpr (sizeof...(values) > 0) {
@@ -858,6 +985,7 @@ class debugHelper {
     os << " (" << printer::type_print(types.front()) << ")";
     types.pop();
   }
+
   template <std::size_t N>
   void print_expand(const char (&head)[N]) {
     exprs.pop();
@@ -866,6 +994,7 @@ class debugHelper {
 
     types.pop();
   }
+
   template <typename T>
   void print_expand(type<T> head) {
     exprs.pop();
@@ -875,6 +1004,7 @@ class debugHelper {
 
     types.pop();
   }
+
   template <typename Head, typename... Tail>
   void print_expand(Head&& head, Tail&&... tail) {
     os << printer::expression_print(exprs.front()) << " = ";
@@ -889,6 +1019,7 @@ class debugHelper {
 
     print_expand(tail...);
   }
+
   template <std::size_t N, typename... Tail>
   void print_expand(const char (&head)[N], Tail&&... tail) {
     exprs.pop();
@@ -899,6 +1030,7 @@ class debugHelper {
 
     print_expand(tail...);
   }
+
   template <typename T, typename... Tail>
   void print_expand(type<T> head, Tail&&... tail) {
     exprs.pop();
@@ -930,17 +1062,17 @@ class debugHelper {
     dbg::debugHelper(__FILE__, __func__, __LINE__).print(x);        \
   } while (false)
 #else
-#define PARENS ()
-#define EXPAND(arg) EXPAND1(EXPAND1(EXPAND1(EXPAND1(arg))))
-#define EXPAND1(arg) EXPAND2(EXPAND2(EXPAND2(EXPAND2(arg))))
-#define EXPAND2(arg) EXPAND3(EXPAND3(EXPAND3(EXPAND3(arg))))
-#define EXPAND3(arg) EXPAND4(EXPAND4(EXPAND4(EXPAND4(arg))))
-#define EXPAND4(arg) arg
-#define FOR_EACH(func, ...) \
-  __VA_OPT__(EXPAND(FOR_EACH_HELPER(func, __VA_ARGS__)))
-#define FOR_EACH_HELPER(func, a1, ...) \
-  func(a1) __VA_OPT__(FOR_EACH_AGAIN PARENS(func, __VA_ARGS__))
-#define FOR_EACH_AGAIN() FOR_EACH_HELPER
+#define DBG_PARENS ()
+#define DBG_EXPAND(arg) DBG_EXPAND1(DBG_EXPAND1(DBG_EXPAND1(DBG_EXPAND1(arg))))
+#define DBG_EXPAND1(arg) DBG_EXPAND2(DBG_EXPAND2(DBG_EXPAND2(DBG_EXPAND2(arg))))
+#define DBG_EXPAND2(arg) DBG_EXPAND3(DBG_EXPAND3(DBG_EXPAND3(DBG_EXPAND3(arg))))
+#define DBG_EXPAND3(arg) DBG_EXPAND4(DBG_EXPAND4(DBG_EXPAND4(DBG_EXPAND4(arg))))
+#define DBG_EXPAND4(arg) arg
+#define DBG_FOR_EACH(func, ...) \
+  __VA_OPT__(DBG_EXPAND(DBG_FOR_EACH_HELPER(func, __VA_ARGS__)))
+#define DBG_FOR_EACH_HELPER(func, a1, ...) \
+  func(a1) __VA_OPT__(DBG_FOR_EACH_AGAIN DBG_PARENS(func, __VA_ARGS__))
+#define DBG_FOR_EACH_AGAIN() DBG_FOR_EACH_HELPER
 
 #define DBG_SAVE_EXPR(x) \
   dbg::debugHelper::push_expr(static_cast<std::string>(#x));
@@ -949,8 +1081,8 @@ class debugHelper {
 
 #define dbg(...)                                                       \
   do {                                                                 \
-    FOR_EACH(DBG_SAVE_EXPR, __VA_ARGS__)                               \
-    FOR_EACH(DBG_SAVE_TYPE, __VA_ARGS__)                               \
+    DBG_FOR_EACH(DBG_SAVE_EXPR, __VA_ARGS__)                               \
+    DBG_FOR_EACH(DBG_SAVE_TYPE, __VA_ARGS__)                               \
     dbg::debugHelper(__FILE__, __func__, __LINE__).print(__VA_ARGS__); \
   } while (false)
 
