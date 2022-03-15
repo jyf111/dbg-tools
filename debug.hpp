@@ -290,7 +290,8 @@ std::string type_name(type<std::map<Key, T>>) {
 
 template <typename Key, typename T>
 std::string type_name(type<std::unordered_map<Key, T>>) {
-  return "std::unordered_map<" + get_type_name<Key>() + ", " + get_type_name<T>() + ">";
+  return "std::unordered_map<" + get_type_name<Key>() + ", " +
+         get_type_name<T>() + ">";
 }
 
 template <typename Key>
@@ -549,10 +550,17 @@ inline std::string expression_print(const std::string& s) {
     return s;
 }
 inline std::string value_print(const std::string& s) {
-  if (config::get_colorized_out())
-    return config::get_value_color() + s + config::get_reset_color();
-  else
+  if (config::get_colorized_out()) {
+    const auto pos = s.find(config::get_reset_color());
+    if (pos == std::string::npos)
+      return config::get_value_color() + s + config::get_reset_color();
+    else
+      return config::get_value_color() + s.substr(0, pos) +
+             config::get_reset_color() + config::get_value_color() +
+             value_print(s.substr(pos + config::get_reset_color().size()));
+  } else {
     return s;
+  }
 }
 inline std::string type_print(const std::string& s) {
   if (config::get_colorized_out())
@@ -1101,8 +1109,8 @@ class debugHelper {
 
 #define dbg(...)                                                       \
   do {                                                                 \
-    DBG_FOR_EACH(DBG_SAVE_EXPR, __VA_ARGS__)                               \
-    DBG_FOR_EACH(DBG_SAVE_TYPE, __VA_ARGS__)                               \
+    DBG_FOR_EACH(DBG_SAVE_EXPR, __VA_ARGS__)                           \
+    DBG_FOR_EACH(DBG_SAVE_TYPE, __VA_ARGS__)                           \
     dbg::debugHelper(__FILE__, __func__, __LINE__).print(__VA_ARGS__); \
   } while (false)
 
