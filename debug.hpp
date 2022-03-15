@@ -288,6 +288,16 @@ std::string type_name(type<std::map<Key, T>>) {
   return "std::map<" + get_type_name<Key>() + ", " + get_type_name<T>() + ">";
 }
 
+template <typename Key, typename T>
+std::string type_name(type<std::unordered_map<Key, T>>) {
+  return "std::unordered_map<" + get_type_name<Key>() + ", " + get_type_name<T>() + ">";
+}
+
+template <typename Key>
+std::string type_name(type<std::unordered_set<Key>>) {
+  return "std::unordered_set<" + get_type_name<Key>() + ">";
+}
+
 template <typename... T>
 std::string type_list_to_string() {
   std::string result;
@@ -308,6 +318,16 @@ std::string type_name(type<std::tuple<T...>>) {
 
 template <typename T>
 std::string type_name(type<hex<T>>) {
+  return get_type_name<T>();
+}
+
+template <typename T>
+std::string type_name(type<oct<T>>) {
+  return get_type_name<T>();
+}
+
+template <typename T>
+std::string type_name(type<bin<T>>) {
   return get_type_name<T>();
 }
 

@@ -289,6 +289,10 @@ int main() {
     dbg(mp);
     std::set<std::string> st;
     dbg(st);
+    std::unordered_map<std::string, int> ump;
+    dbg(ump);
+    std::bitset<12> bit(1209);
+    dbg(bit);
   }
   return 0;
 }
