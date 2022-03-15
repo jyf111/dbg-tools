@@ -49,6 +49,7 @@ int main() {
 #### TODO
 1. for_each field?(may be)
 2. more tests
+3. may be combine with json
 
 #### weakness
 1. 为了显示传入的语句，并且更好的输出类型，只能使用宏，而多参数需要借助FOR_EACH_MACRO，容易导致报错信息过多（与宏展开有关）。多参数宏为了解决空参数问题，使用了__VA_OPT__，所以至少需要-std=c++2a。可以通过-DSINGLE指明使用单参数，此时需要-std=c++17，但是不支持空参数。

@@ -381,25 +381,35 @@ constexpr bool has_ostream_operator =
     is_detected_v<detect_ostream_operator_t, T>;
 
 namespace flatten {
-template <std::size_t I>
 struct any_constructor {
+  std::size_t I;
   // -Wreturn-type
   template <typename T>
-  [[noreturn]] constexpr operator T&() const& noexcept {}
+  [[ noreturn ]] constexpr operator T&() const & noexcept {}
 };
 
-template <class T, std::size_t... I>
-constexpr auto enable_if_constructible_helper(
-    std::index_sequence<I...>) noexcept -> decltype(T{any_constructor<I>{}...});
+template <typename T, std::size_t... I>
+constexpr auto constructible_nfields(
+    std::index_sequence<I...>) noexcept -> decltype(T{any_constructor{I}...});
 
 template <class T, std::size_t N,
           class = decltype(
-              enable_if_constructible_helper<T>(std::make_index_sequence<N>()))>
-using enable_if_constructible_helper_t = std::size_t;
+              constructible_nfields<T>(std::make_index_sequence<N>()))>
+using constructible_nfields_t = std::size_t;
+
+template <typename T, std::size_t... I1, std::size_t... I2>
+constexpr auto constructible_nfields_margs(
+    std::index_sequence<I1...>, std::index_sequence<I2...>) noexcept ->
+    decltype(T{any_constructor{I1}..., {any_constructor{I2}...}});
+
+template <class T, std::size_t N, std::size_t M,
+          class = decltype(
+              constructible_nfields_margs<T>(std::make_index_sequence<N>(), std::make_index_sequence<M>()))>
+using constructible_nfields_margs_t = std::size_t;
 
 template <typename T, std::size_t I0, std::size_t... I>
 constexpr auto fields_count(std::index_sequence<I0, I...>) noexcept
-    -> enable_if_constructible_helper_t<T, sizeof...(I) + 1> {
+    -> constructible_nfields_t<T, sizeof...(I) + 1> {
   return sizeof...(I) + 1;  // I0 + ...I
 }
 

@@ -259,7 +259,6 @@ int main() {
     dbg("test for base output");
     char value = 110;
     short neg = -12;
-    std::cout << dbg::get_type_name<decltype(bad)>() << '\n';
     dbg(dbg::hex(value));
     dbg(dbg::hex(neg));
     std::string str = "123";
@@ -284,7 +283,8 @@ int main() {
     struct sp {
       int a[2] = {0, 1};
     };
-    // dbg(sp());
+    std::cout << std::is_same_v<dbg::flatten::constructible_nfields_margs_t<sp, 0, 2>, std::size_t> << '\n';
+    //dbg(sp());
     std::map<std::string, int> mp;
     dbg(mp);
     std::set<std::string> st;
