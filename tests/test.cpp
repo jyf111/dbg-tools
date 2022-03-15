@@ -242,17 +242,20 @@ int main() {
     dbg(nps::B());
     struct complex_data {
       std::vector<int> vec;
-      struct inner {
-        int integer;
-        double decimal;
-      } in;
+      // struct inner {
+      //   int integer;
+      //   double decimal;
+      // } in;
       int* b;
       const char* cs;
       char ch;
       std::string name;
     };
     int tmp = 6;
-    complex_data cd = {{1, 2, 3}, {123, 2.0}, &tmp, "complex", 'P', "Alex"};
+    complex_data cd = {{1, 2, 3}, &tmp, "complex", 'P', "Alex"};
+    std::cout << dbg::flatten::counter_impl<complex_data>() << '\n';
+    std::cout << dbg::flatten::specific_counter_impl<complex_data, 0>() << '\n';
+    std::cout << dbg::flatten::unique_counter_impl<complex_data>() << '\n';
     dbg(cd);
   }
   {
@@ -282,9 +285,14 @@ int main() {
     dbg(v);
     struct sp {
       int a[2] = {0, 1};
+      int b = 6;
+      int c[4] = {-1, 1, 2, -2};
     };
-    std::cout << std::is_same_v<dbg::flatten::constructible_nfields_margs_t<sp, 0, 2>, std::size_t> << '\n';
-    //dbg(sp());
+    sp sp_obj;
+    dbg(sp_obj);
+    int arr[2] = {-1, 1};
+    int (&brr)[2] = arr;
+    dbg(brr);
     std::map<std::string, int> mp;
     dbg(mp);
     std::set<std::string> st;

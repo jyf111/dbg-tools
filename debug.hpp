@@ -372,8 +372,8 @@ using detect_ostream_operator_t =
 
 template <typename T>
 constexpr bool is_container_v = std::conjunction_v<
-    is_detected<detect_begin_t, T>, is_detected<detect_end_t, T>,
-    is_detected<detect_size_t, T>,
+    is_detected<detect_begin_t, const T>, is_detected<detect_end_t, const T>,
+    is_detected<detect_size_t, const T>,
     std::negation<std::is_same<std::string, std::decay_t<T>>>>;
 
 template <typename T>
@@ -385,26 +385,26 @@ struct any_constructor {
   std::size_t I;
   // -Wreturn-type
   template <typename T>
-  [[ noreturn ]] constexpr operator T&() const & noexcept {}
+  [[noreturn]] constexpr operator T&() const& noexcept {}
 };
 
 template <typename T, std::size_t... I>
-constexpr auto constructible_nfields(
-    std::index_sequence<I...>) noexcept -> decltype(T{any_constructor{I}...});
+constexpr auto constructible_nfields(std::index_sequence<I...>) noexcept
+    -> decltype(T{any_constructor{I}...});
 
 template <class T, std::size_t N,
-          class = decltype(
-              constructible_nfields<T>(std::make_index_sequence<N>()))>
+          class =
+              decltype(constructible_nfields<T>(std::make_index_sequence<N>()))>
 using constructible_nfields_t = std::size_t;
 
 template <typename T, std::size_t... I1, std::size_t... I2>
-constexpr auto constructible_nfields_margs(
-    std::index_sequence<I1...>, std::index_sequence<I2...>) noexcept ->
-    decltype(T{any_constructor{I1}..., {any_constructor{I2}...}});
+constexpr auto constructible_nfields_margs(std::index_sequence<I1...>,
+                                           std::index_sequence<I2...>) noexcept
+    -> decltype(T{any_constructor{I1}..., {any_constructor{I2}...}});
 
 template <class T, std::size_t N, std::size_t M,
-          class = decltype(
-              constructible_nfields_margs<T>(std::make_index_sequence<N>(), std::make_index_sequence<M>()))>
+          class = decltype(constructible_nfields_margs<T>(
+              std::make_index_sequence<N>(), std::make_index_sequence<M>()))>
 using constructible_nfields_margs_t = std::size_t;
 
 template <typename T, std::size_t I0, std::size_t... I>
@@ -422,9 +422,46 @@ constexpr std::size_t fields_count(std::index_sequence<I...>) noexcept {
   }
 }
 
+template <typename T, std::size_t N, std::size_t I0, std::size_t... I>
+constexpr auto specific_fields_count(std::index_sequence<I0, I...>) noexcept
+    -> constructible_nfields_margs_t<T, N, sizeof...(I) + 1> {
+  return sizeof...(I) + 1;  // I0 + ...I
+}
+
+template <typename T, std::size_t N, std::size_t... I>
+constexpr std::size_t specific_fields_count(
+    std::index_sequence<I...>) noexcept {
+  return specific_fields_count<T, N>(
+        std::make_index_sequence<sizeof...(I) - 1>{});
+}
+
 template <typename T>
 constexpr std::size_t counter_impl() noexcept {
   return fields_count<T>(std::make_index_sequence<sizeof(T)>{});
+}
+
+template <typename T, std::size_t N>
+constexpr std::size_t specific_counter_impl() noexcept {
+  return specific_fields_count<T, N>(std::make_index_sequence<sizeof(T) + 1>{}); // ! notice + 1
+}
+
+template <std::size_t N, std::size_t Max>
+constexpr auto field_step = N > Max ? 1 : N;
+
+template <typename T, std::size_t cur_field, std::size_t total_fields>
+constexpr std::size_t unique_fields_count(std::size_t unique_fields) noexcept {
+  if constexpr (cur_field == total_fields) {
+    return unique_fields;
+  } else {
+    return unique_fields_count<
+        T, cur_field + field_step<specific_counter_impl<T, cur_field>(), total_fields>, total_fields>(
+        unique_fields + 1);
+  }
+}
+
+template <typename T>
+constexpr std::size_t unique_counter_impl() noexcept {
+  return unique_fields_count<T, 0, counter_impl<T>()>(0);
 }
 
 // begin auto generate code
@@ -541,7 +578,7 @@ constexpr auto flatten_impl(
 template <typename T>
 constexpr auto flatten_to_tuple(const T& t) noexcept {
   return flatten_impl(t,
-                      std::integral_constant<std::size_t, counter_impl<T>()>());
+                      std::integral_constant<std::size_t, unique_counter_impl<T>()>());
 }
 
 }  // namespace flatten

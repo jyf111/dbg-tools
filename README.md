@@ -45,7 +45,7 @@ int main() {
 + [x] 支持各种容器的输出(STL、原生数组...)
 + [x] 聚合类型(is_aggregate_v\<T\>)可以直接输出各个成员(无需自定义operator<<)。原理就是借助SFINAE、聚合类型初始化以及结构化绑定。
 + [x] 2进制、8进制、16进制输出整数
-
++ [x] 对于不可打印字符(<0x20||>0x7f)，用\x的十六进制转移+蓝色背景颜色显示（包括字符串中的不可见字符）
 #### TODO
 1. for_each field?(may be)
 2. more tests
@@ -58,19 +58,12 @@ int main() {
 // not support!
 dbg({1, 3, 4}); dbg(data{1, 2});
 ```
-3. 聚合类型中包含原生数组还存在问题。 TODO!
-```cpp
-// example
-struct st {
-  int a[2];
-};
-```
-4. 只支持unix。windows的colorize接口不一样
-5. 对于不可打印字符(<0x20||>0x7f)，用\x的十六进制转移+蓝色背景颜色显示（包括字符串中的不可见字符）
-6. 测试
+3. 只支持unix。windows的colorize接口不一样
+4. 测试
+5. 在自动序列化聚合类型时，会生成大量模板（正比于sizeof(T)），所以如果聚合类型的大小很大，可能会导致编译速度极慢
 #### thanks for
 + [magic-get](https://www.youtube.com/watch?v=abdeAew3gmQ) <https://github.com/boostorg/pfr>
 + dbg-macro <https://github.com/sharkdp/dbg-macro>
-
++ <https://towardsdev.com/counting-the-number-of-fields-in-an-aggregate-in-c-20-c81aecfd725c>
 #### test
 ![test](img/test.png)
