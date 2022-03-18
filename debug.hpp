@@ -991,7 +991,7 @@ std::enable_if_t<!std::is_integral_v<T>, void> print(std::ostream& os,
 template <typename T>
 std::enable_if_t<std::is_integral_v<T>, void> print(std::ostream& os,
                                                     const bin<T>& value) {
-  os << "0B" << std::bitset<sizeof(T)>(value.val);
+  os << "0B" << std::bitset<8*sizeof(T)>(value.val);
 }
 
 template <typename T>
@@ -1131,7 +1131,7 @@ class debugHelper {
     printer::print(value, head);
     os << printer::value_print(value.str());
 
-    os << " (" << printer::type_print(types.front()) << "), ";
+    os << " (" << printer::type_print(types.front()) << ") ";
     types.pop();
 
     print_expand(tail...);
@@ -1141,7 +1141,7 @@ class debugHelper {
   void print_expand(const char (&head)[N], Tail&&... tail) {
     exprs.pop();
 
-    os << printer::message_print(head) << ", ";
+    os << printer::message_print(head) << " ";
 
     types.pop();
 
@@ -1154,7 +1154,7 @@ class debugHelper {
 
     os << printer::type_print(types.front() + " [sizeof " +
                               std::to_string(sizeof(T)) + "]")
-       << ", ";
+       << " ";
 
     types.pop();
 
