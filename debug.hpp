@@ -149,6 +149,7 @@ struct bin {
   bin(T _val) : val(_val) {}
   T val;
 };
+
 template <typename T>
 struct type {};
 
@@ -384,16 +385,26 @@ namespace flatten {
 struct any_constructor {
   std::size_t I;
   // -Wreturn-type
-  template <typename T>
-  [[noreturn]] constexpr operator T&() const& noexcept {}
+  template <typename T,
+            typename = std::enable_if_t<!std::is_lvalue_reference<T>::value>>
+  operator T&&() const&&;
+
+  template <typename T,
+            typename = std::enable_if_t<std::is_copy_constructible<T>::value>>
+  operator T&() const&;
+};
+
+struct class_detect {
+  template <typename T, typename = std::enable_if_t<std::is_class_v<T>>>
+  operator T&() const&;
 };
 
 template <typename T, std::size_t... I>
 constexpr auto constructible_nfields(std::index_sequence<I...>) noexcept
     -> decltype(T{any_constructor{I}...});
 
-template <class T, std::size_t N,
-          class =
+template <typename T, std::size_t N,
+          typename =
               decltype(constructible_nfields<T>(std::make_index_sequence<N>()))>
 using constructible_nfields_t = std::size_t;
 
@@ -402,10 +413,32 @@ constexpr auto constructible_nfields_margs(std::index_sequence<I1...>,
                                            std::index_sequence<I2...>) noexcept
     -> decltype(T{any_constructor{I1}..., {any_constructor{I2}...}});
 
-template <class T, std::size_t N, std::size_t M,
-          class = decltype(constructible_nfields_margs<T>(
+template <typename T, std::size_t N, std::size_t M,
+          typename = decltype(constructible_nfields_margs<T>(
               std::make_index_sequence<N>(), std::make_index_sequence<M>()))>
 using constructible_nfields_margs_t = std::size_t;
+
+template <typename T, std::size_t... I>
+constexpr auto constructible_nfields_class(std::index_sequence<I...>) noexcept
+    -> decltype(T{any_constructor{I}..., class_detect{}});
+
+template <typename T, std::size_t N,
+          typename = decltype(
+              constructible_nfields_class<T>(std::make_index_sequence<N>()))>
+using constructible_nfields_class_t = bool;
+
+template <typename T, std::size_t I0, std::size_t... I>
+constexpr auto specific_fields_class_detect(
+    std::index_sequence<I0, I...>) noexcept
+    -> constructible_nfields_class_t<T, sizeof...(I)> {
+  return true;
+}
+
+template <typename T, std::size_t... I>
+constexpr bool specific_fields_class_detect(
+    std::index_sequence<I...>) noexcept {
+  return false;
+}
 
 template <typename T, std::size_t I0, std::size_t... I>
 constexpr auto fields_count(std::index_sequence<I0, I...>) noexcept
@@ -432,7 +465,7 @@ template <typename T, std::size_t N, std::size_t... I>
 constexpr std::size_t specific_fields_count(
     std::index_sequence<I...>) noexcept {
   return specific_fields_count<T, N>(
-        std::make_index_sequence<sizeof...(I) - 1>{});
+      std::make_index_sequence<sizeof...(I) - 1>{});
 }
 
 template <typename T>
@@ -442,7 +475,8 @@ constexpr std::size_t counter_impl() noexcept {
 
 template <typename T, std::size_t N>
 constexpr std::size_t specific_counter_impl() noexcept {
-  return specific_fields_count<T, N>(std::make_index_sequence<sizeof(T) + 1>{}); // ! notice + 1
+  return specific_fields_count<T, N>(
+      std::make_index_sequence<sizeof(T) + 1>{});  // ! notice + 1
 }
 
 template <std::size_t N, std::size_t Max>
@@ -452,10 +486,16 @@ template <typename T, std::size_t cur_field, std::size_t total_fields>
 constexpr std::size_t unique_fields_count(std::size_t unique_fields) noexcept {
   if constexpr (cur_field == total_fields) {
     return unique_fields;
+  } else if constexpr ((specific_fields_class_detect<T>(
+                           std::make_index_sequence<cur_field + 1>{}))) {
+    return unique_fields_count<T, cur_field + 1, total_fields>(unique_fields +
+                                                               1);
   } else {
     return unique_fields_count<
-        T, cur_field + field_step<specific_counter_impl<T, cur_field>(), total_fields>, total_fields>(
-        unique_fields + 1);
+        T,
+        cur_field +
+            field_step<specific_counter_impl<T, cur_field>(), total_fields>,
+        total_fields>(unique_fields + 1);
   }
 }
 
@@ -577,10 +617,9 @@ constexpr auto flatten_impl(
 
 template <typename T>
 constexpr auto flatten_to_tuple(const T& t) noexcept {
-  return flatten_impl(t,
-                      std::integral_constant<std::size_t, unique_counter_impl<T>()>());
+  return flatten_impl(
+      t, std::integral_constant<std::size_t, unique_counter_impl<T>()>());
 }
-
 }  // namespace flatten
 
 namespace printer {
@@ -989,7 +1028,7 @@ class timer {
     }
     auto secs = std::chrono::duration_cast<std::chrono::seconds>(cost);
     helper::get_stream() << printer::message_print(
-        std::to_string(secs.count()) + '.' +
+        "elapsed " + std::to_string(secs.count()) + '.' +
         std::to_string((cost - secs).count()) + "s\n");
   }
 

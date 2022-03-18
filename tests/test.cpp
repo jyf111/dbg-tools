@@ -242,20 +242,18 @@ int main() {
     dbg(nps::B());
     struct complex_data {
       std::vector<int> vec;
-      // struct inner {
-      //   int integer;
-      //   double decimal;
-      // } in;
+      struct inner {
+        int integer;
+        double decimal;
+      } in;
       int* b;
       const char* cs;
       char ch;
       std::string name;
     };
+    dbg(dbg::flatten::unique_counter_impl<complex_data>());
     int tmp = 6;
-    complex_data cd = {{1, 2, 3}, &tmp, "complex", 'P', "Alex"};
-    // std::cout << dbg::flatten::counter_impl<complex_data>() << '\n';
-    // std::cout << dbg::flatten::specific_counter_impl<complex_data, 1>() << '\n';
-    // std::cout << dbg::flatten::unique_counter_impl<complex_data>() << '\n';
+    complex_data cd = {{1, 2, 3}, {6, 6.6}, &tmp, "complex", 'P', "Alex"};
     dbg(cd);
   }
   {
@@ -301,6 +299,24 @@ int main() {
     dbg(ump);
     std::bitset<12> bit(1209);
     dbg(bit);
+    struct nest {
+      struct inner {
+        int a, b;
+      };
+      inner in;
+      int c;
+      struct tao {
+        struct tao2 {
+          char d = 'A';
+          int data[4] = {0, 9, 8, 9};
+        };
+        tao2 tmp;
+        int tag = -1;
+      };
+      tao t;
+    };
+    nest nst{{1, 2}, 5};
+    dbg(nst);
   }
   return 0;
 }
