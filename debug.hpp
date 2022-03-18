@@ -126,11 +126,64 @@ inline void set_back_color(const std::string& color) {
   get_back_color() = color;
 }
 }  // namespace config
+
 namespace helper {
 inline std::ostream& get_stream() {
   return (config::get_os() == nullptr ? std::cerr : *config::get_os());
 }
 }  // namespace helper
+
+namespace printer {
+inline std::string location_print(const std::string& s) {
+  if (config::get_colorized_out())
+    return config::get_location_color() + s + config::get_reset_color();
+  else
+    return s;
+}
+inline std::string expression_print(const std::string& s) {
+  if (config::get_colorized_out())
+    return config::get_expression_color() + s + config::get_reset_color();
+  else
+    return s;
+}
+inline std::string value_print(const std::string& s) {
+  if (config::get_colorized_out()) {
+    const auto pos = s.find(config::get_reset_color());
+    if (pos == std::string::npos)
+      return config::get_value_color() + s + config::get_reset_color();
+    else
+      return config::get_value_color() + s.substr(0, pos) +
+             config::get_reset_color() + config::get_value_color() +
+             value_print(s.substr(pos + config::get_reset_color().size()));
+  } else {
+    return s;
+  }
+}
+inline std::string type_print(const std::string& s) {
+  if (config::get_colorized_out())
+    return config::get_type_color() + s + config::get_reset_color();
+  else
+    return s;
+}
+inline std::string message_print(const std::string& s) {
+  if (config::get_colorized_out())
+    return config::get_message_color() + s + config::get_reset_color();
+  else
+    return s;
+}
+inline std::string error_print(const std::string& s) {
+  if (config::get_colorized_out())
+    return config::get_error_color() + s + config::get_reset_color();
+  else
+    return s;
+}
+inline std::string invisible_print(const std::string& s) {
+  if (config::get_colorized_out())
+    return config::get_back_color() + s + config::get_reset_color();
+  else
+    return s;
+}
+} // namespace printer
 
 template <typename T>
 struct hex {
@@ -479,9 +532,6 @@ constexpr std::size_t specific_counter_impl() noexcept {
       std::make_index_sequence<sizeof(T) + 1>{});  // ! notice + 1
 }
 
-template <std::size_t N, std::size_t Max>
-constexpr auto field_step = N > Max ? 1 : N;
-
 template <typename T, std::size_t cur_field, std::size_t total_fields>
 constexpr std::size_t unique_fields_count(std::size_t unique_fields) noexcept {
   if constexpr (cur_field == total_fields) {
@@ -492,10 +542,8 @@ constexpr std::size_t unique_fields_count(std::size_t unique_fields) noexcept {
                                                                1);
   } else {
     return unique_fields_count<
-        T,
-        cur_field +
-            field_step<specific_counter_impl<T, cur_field>(), total_fields>,
-        total_fields>(unique_fields + 1);
+        T, cur_field + specific_counter_impl<T, cur_field>(), total_fields>(
+        unique_fields + 1);
   }
 }
 
@@ -614,6 +662,11 @@ constexpr auto flatten_impl(
                                f12, f13, f14, f15, f16);
 }
 // end auto generate code
+template <typename T, std::size_t N>
+constexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, N> N1) noexcept {
+  helper::get_stream() << printer::error_print("please rerun generate.py to gen more binds! ");
+  return std::forward_as_tuple();
+}
 
 template <typename T>
 constexpr auto flatten_to_tuple(const T& t) noexcept {
@@ -623,56 +676,6 @@ constexpr auto flatten_to_tuple(const T& t) noexcept {
 }  // namespace flatten
 
 namespace printer {
-inline std::string location_print(const std::string& s) {
-  if (config::get_colorized_out())
-    return config::get_location_color() + s + config::get_reset_color();
-  else
-    return s;
-}
-inline std::string expression_print(const std::string& s) {
-  if (config::get_colorized_out())
-    return config::get_expression_color() + s + config::get_reset_color();
-  else
-    return s;
-}
-inline std::string value_print(const std::string& s) {
-  if (config::get_colorized_out()) {
-    const auto pos = s.find(config::get_reset_color());
-    if (pos == std::string::npos)
-      return config::get_value_color() + s + config::get_reset_color();
-    else
-      return config::get_value_color() + s.substr(0, pos) +
-             config::get_reset_color() + config::get_value_color() +
-             value_print(s.substr(pos + config::get_reset_color().size()));
-  } else {
-    return s;
-  }
-}
-inline std::string type_print(const std::string& s) {
-  if (config::get_colorized_out())
-    return config::get_type_color() + s + config::get_reset_color();
-  else
-    return s;
-}
-inline std::string message_print(const std::string& s) {
-  if (config::get_colorized_out())
-    return config::get_message_color() + s + config::get_reset_color();
-  else
-    return s;
-}
-inline std::string error_print(const std::string& s) {
-  if (config::get_colorized_out())
-    return config::get_error_color() + s + config::get_reset_color();
-  else
-    return s;
-}
-inline std::string invisible_print(const std::string& s) {
-  if (config::get_colorized_out())
-    return config::get_back_color() + s + config::get_reset_color();
-  else
-    return s;
-}
-
 inline void print_char(std::ostream& os, const char& value) {
   if (value >= 0x20 && value <= 0x7E) {
     os << value;

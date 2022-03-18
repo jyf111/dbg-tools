@@ -317,6 +317,18 @@ int main() {
     };
     nest nst{{1, 2}, 5};
     dbg(nst);
+    struct big {
+      int a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q;
+    };
+    dbg(big());
+    struct outer {
+      struct inner {
+        int a, b;
+      } in;
+      int c;
+    };
+    outer o = {{1, 2}, 3};
+    dbg(o);
   }
   return 0;
 }

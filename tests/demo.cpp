@@ -3,6 +3,10 @@ struct data {
   int a, b, c;
   std::string d;
   int arr[3];
+  struct dir {
+    int d[4] = {1, -1, 2, -2};
+  };
+  dir dr;
 };
 int main() {
   int a = 2;
