@@ -774,7 +774,7 @@ std::enable_if_t<std::is_enum_v<Enum>, void> print(std::ostream& os,
 template <typename Container>
 std::enable_if_t<is_container_v<Container>, void> print(
     std::ostream& os, const Container& value) {
-  os << "{";
+  os << "[";
   const size_t size = std::size(value);
   const size_t n = std::min(config::get_container_length(), size);
   size_t i = 0;
@@ -790,7 +790,7 @@ std::enable_if_t<is_container_v<Container>, void> print(
     os << " size:" << size;
   }
 
-  os << "}";
+  os << "]";
 }
 
 template <typename Aggregate>
