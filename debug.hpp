@@ -56,11 +56,10 @@ inline bool is_atty(const std::ostream& os) {
 
 inline bool should_color(const std::ostream& os) { return is_atty(os); }
 
-inline std::string to_string(const int num) {
-  if (num >= 10 || num < 0)
-    return std::to_string(num);
-  else
-    return '0' + std::to_string(num);
+inline std::string to_string(const int num, int width) {
+  std::ostringstream os;
+  os << std::setw(width) << std::setfill('0') << std::to_string(num);
+  return os.str();
 }
 }  // namespace helper
 namespace config {
@@ -1032,7 +1031,7 @@ class timer {
     auto secs = std::chrono::duration_cast<std::chrono::seconds>(cost);
     helper::get_stream() << printer::message_print(
         "elapsed " + std::to_string(secs.count()) + '.' +
-        std::to_string((cost - secs).count()) + "s\n");
+        helper::to_string((cost - secs).count(), 3) + "s\n");
   }
 
   static void show() {
@@ -1042,9 +1041,9 @@ class timer {
     helper::get_stream() << printer::location_print("[timer] ")
                          << printer::message_print(
                                 "current time = " +
-                                helper::to_string(tm->tm_hour) + ':' +
-                                helper::to_string(tm->tm_min) + ':' +
-                                helper::to_string(tm->tm_sec) + '\n');
+                                helper::to_string(tm->tm_hour, 2) + ':' +
+                                helper::to_string(tm->tm_min, 2) + ':' +
+                                helper::to_string(tm->tm_sec, 2) + '\n');
   }
 
  private:
