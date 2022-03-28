@@ -336,9 +336,19 @@ std::string type_name(type<std::set<Key>>) {
   return "std::set<" + get_type_name<Key>() + ">";
 }
 
+template <typename Key>
+std::string type_name(type<std::multiset<Key>>) {
+  return "std::multiset<" + get_type_name<Key>() + ">";
+}
+
 template <typename Key, typename T>
 std::string type_name(type<std::map<Key, T>>) {
   return "std::map<" + get_type_name<Key>() + ", " + get_type_name<T>() + ">";
+}
+
+template <typename Key, typename T>
+std::string type_name(type<std::multimap<Key, T>>) {
+  return "std::multimap<" + get_type_name<Key>() + ", " + get_type_name<T>() + ">";
 }
 
 template <typename Key, typename T>
@@ -350,6 +360,16 @@ std::string type_name(type<std::unordered_map<Key, T>>) {
 template <typename Key>
 std::string type_name(type<std::unordered_set<Key>>) {
   return "std::unordered_set<" + get_type_name<Key>() + ">";
+}
+
+template <typename T>
+std::string type_name(type<std::optional<T>>) {
+  return "std::optional<" + get_type_name<T>() + ">";
+}
+
+template <typename T>
+std::string type_name(type<std::initializer_list<T>>) {
+  return "std::initializer_list<" + get_type_name<T>() + ">";
 }
 
 template <typename... T>
@@ -368,6 +388,11 @@ std::string type_list_to_string() {
 template <typename... T>
 std::string type_name(type<std::tuple<T...>>) {
   return "std::tuple<" + type_list_to_string<T...>() + ">";
+}
+
+template <typename... T>
+std::string type_name(type<std::variant<T...>>) {
+  return "std::variant<" + type_list_to_string<T...>() + ">";
 }
 
 template <typename T>
@@ -745,11 +770,22 @@ inline void print(std::ostream& os, const unsigned char& value);
 
 inline void print(std::ostream& os, const std::nullptr_t& value);
 
+inline void print(std::ostream& os, const std::nullopt_t& value);
+
 template <typename T1, typename T2>
 void print(std::ostream& os, const std::pair<T1, T2>& value);
 
 template <typename T>
 void print(std::ostream& os, T* const& value);
+
+template <>
+void print(std::ostream& os, char* const& value);
+
+template <>
+void print(std::ostream& os, signed char* const& value);
+
+template <>
+void print(std::ostream& os, unsigned char* const& value);
 
 template <typename T>
 void print(std::ostream& os, const std::optional<T>& value);
@@ -902,12 +938,43 @@ inline void print(std::ostream& os, const std::nullptr_t& value) {
   os << "nullptr";
 }
 
+inline void print(std::ostream& os, const std::nullopt_t& value) {
+  os << "nullopt";
+}
+
 template <typename T>
 void print(std::ostream& os, T* const& value) {
   if (value == nullptr) {
     print(os, nullptr);
   } else {
     os << value;
+  }
+}
+
+template <>
+void print(std::ostream& os, char* const& value) {
+  if (value == nullptr) {
+    print(os, nullptr);
+  } else {
+    os << reinterpret_cast<int*>(value);
+  }
+}
+
+template <>
+void print(std::ostream& os, signed char* const& value) {
+  if (value == nullptr) {
+    print(os, nullptr);
+  } else {
+    os << reinterpret_cast<int*>(value);
+  }
+}
+
+template <>
+void print(std::ostream& os, unsigned char* const& value) {
+  if (value == nullptr) {
+    print(os, nullptr);
+  } else {
+    os << reinterpret_cast<int*>(value);
   }
 }
 
@@ -1000,13 +1067,13 @@ std::enable_if_t<!std::is_integral_v<T>, void> print(std::ostream& os,
 }
 }  // namespace printer
 
-class timer {
+class Timer {
  public:
-  timer() : cost(0) {}
+  Timer() : cost(0) {}
 
   void start(std::string message = "") {
     if (message.size()) {
-      helper::get_stream() << printer::location_print("[timer] ")
+      helper::get_stream() << printer::location_print("[Timer] ")
                            << printer::message_print(message) << '\n';
     }
     start_tp = std::chrono::steady_clock::now();
@@ -1024,7 +1091,7 @@ class timer {
   }
 
   void log(std::string message = "") {
-    helper::get_stream() << printer::location_print("[timer] ");
+    helper::get_stream() << printer::location_print("[Timer] ");
     if (message.size()) {
       helper::get_stream() << printer::message_print(message) << ' ';
     }
@@ -1038,7 +1105,7 @@ class timer {
     const auto now = std::chrono::system_clock::now();
     auto t = std::chrono::system_clock::to_time_t(now);
     const std::tm* tm = std::localtime(&t);
-    helper::get_stream() << printer::location_print("[timer] ")
+    helper::get_stream() << printer::location_print("[Timer] ")
                          << printer::message_print(
                                 "current time = " +
                                 helper::to_string(tm->tm_hour, 2) + ':' +
@@ -1171,7 +1238,7 @@ class debugHelper {
 }  // namespace dbg
 
 #ifdef SINGLE
-#define dbg(x)                                                      \
+#define LOG(x)                                                      \
   do {                                                              \
     dbg::debugHelper::push_expr(static_cast<std::string>(#x));      \
     dbg::debugHelper::push_type(dbg::get_type_name<decltype(x)>()); \
@@ -1195,7 +1262,7 @@ class debugHelper {
 #define DBG_SAVE_TYPE(x) \
   dbg::debugHelper::push_type(dbg::get_type_name<decltype(x)>());
 
-#define dbg(...)                                                       \
+#define LOG(...)                                                       \
   do {                                                                 \
     DBG_FOR_EACH(DBG_SAVE_EXPR, __VA_ARGS__)                           \
     DBG_FOR_EACH(DBG_SAVE_TYPE, __VA_ARGS__)                           \
@@ -1204,6 +1271,6 @@ class debugHelper {
 
 #endif
 
-#define dbgtype(x) dbg::type<decltype(x)>()
+#define TYPE(x) dbg::type<decltype(x)>()
 
 #endif

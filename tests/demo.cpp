@@ -15,13 +15,13 @@ int main() {
   long&& rref = 4l;
   data d{1, 2, 3, "hello", {6, 0, 8}};
 #ifndef SINGLE
-  dbg(a, b);
-  dbg(d);
-  dbg(ref, rref);
+  LOG(a, b);
+  LOG(d);
+  LOG(ref, rref);
 #else
-  dbg(a); dbg(b);
-  dbg(d);
-  dbg(ref); dbg(rref);
+  LOG(a); LOG(b);
+  LOG(d);
+  LOG(ref); LOG(rref);
 #endif
   return 0;
 }
