@@ -28,13 +28,13 @@ int main() {
   long&& rref = 4l;
   data d{1, 2, 3, "hello", {6, 0, 8}};
 #ifndef SINGLE
-  dbg(a, b);
-  dbg(d);
-  dbg(ref, rref);
+  LOG(a, b);
+  LOG(d);
+  LOG(ref, rref);
 #else
-  dbg(a); dbg(b);
-  dbg(d);
-  dbg(ref); dbg(rref);
+  LOG(a); LOG(b);
+  LOG(d);
+  LOG(ref); LOG(rref);
 #endif
   return 0;
 }
@@ -62,7 +62,12 @@ int main() {
 2. 由于使用了宏，不支持直接传入初始化列表形式
 ```cpp
 // not support!
-dbg({1, 3, 4}); dbg(data{1, 2});
+LOG({1, 3, 4}); LOG(data{1, 2});
+```
+可以使用以下方法，注意加括号
+```cpp
+LOG((std::initializer_list{1, 3, 4}));
+LOG((data{1, 2}));
 ```
 3. 只支持unix。windows的colorize接口不一样
 4. 测试

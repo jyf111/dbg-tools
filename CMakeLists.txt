@@ -4,7 +4,7 @@ project(debugHelper LANGUAGES CXX)
 
 option(SINGLE "option for single variable macro" OFF)
 
-add_executable(test tests/test.cpp)
+add_executable(test tests/test_catch2.cpp)
 
 if (SINGLE)
   target_compile_options(test

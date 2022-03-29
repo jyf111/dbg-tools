@@ -779,13 +779,13 @@ template <typename T>
 void print(std::ostream& os, T* const& value);
 
 template <>
-void print(std::ostream& os, char* const& value);
+inline void print(std::ostream& os, char* const& value);
 
 template <>
-void print(std::ostream& os, signed char* const& value);
+inline void print(std::ostream& os, signed char* const& value);
 
 template <>
-void print(std::ostream& os, unsigned char* const& value);
+inline void print(std::ostream& os, unsigned char* const& value);
 
 template <typename T>
 void print(std::ostream& os, const std::optional<T>& value);
