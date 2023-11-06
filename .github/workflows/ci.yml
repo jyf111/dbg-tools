@@ -1,0 +1,30 @@
+name: install-and-test
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Dependencies
+        run: |
+          git config --global url.https://github.com/.insteadOf git://github.com/
+          git clone https://github.com/catchorg/Catch2.git --depth 1 --branch v3.4.0
+          cd Catch2
+          cmake -B build -H. -DBUILD_TESTING=OFF
+          sudo cmake --build build --target install
+
+      - name: Install
+        run: |
+          cmake -B build -S .
+          sudo cmake --build build --target install
+
+      - name: Test
+        run: |
+          cmake -B build -S . -DENABLE_TESTS=ON -DBUILD_EXAMPLES=on
+          cmake --build build
+          cmake --build build --target test
+          build/examples/demo

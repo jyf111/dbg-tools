@@ -1,7 +1,7 @@
+Language: Cpp
 BasedOnStyle: Google
 IndentWidth: 2
----
-Language: Cpp
-# Force pointers to the type for C++.
+ColumnLimit: 120
 DerivePointerAlignment: false
-PointerAlignment: Left
+PointerAlignment: Right
+Cpp11BracedListStyle: false

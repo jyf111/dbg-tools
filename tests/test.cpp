@@ -16,7 +16,7 @@ class gb_class_private {
   int a = 2, b = 3, c = 1;
 };
 class gb_class {
-public:
+ public:
   int a;
 };
 struct none {};
@@ -61,27 +61,27 @@ int main() {
   {
     dbg("test for primitive types");
     int a = 1;
-    int& b = a;
-    int* c = &a;
-    int* d = nullptr;
+    int &b = a;
+    int *c = &a;
+    int *d = nullptr;
     bool e = true;
-    const int* ee = nullptr;
-    const int* eee = &a;
+    const int *ee = nullptr;
+    const int *eee = &a;
     bool boolean = false;
     char ch = 'Y';
     int8_t byte = 202;
-    const char* str = "hello";
+    const char *str = "hello";
     const char str_arr[] = "world";  // equal to "world"
     short st = 0;
     long long yyy = -2;
     volatile long long z = st;
     const volatile float bbb = 1.034f;
-    long long& lf = yyy;
+    long long &lf = yyy;
     long zz = 12312321;
     long double ldb = 0.000012313;
     char invisible = '\x00';  // static_cast<char>(130);
-    char& lchar = invisible;
-    const char* invisible_str = "\x80\x81\x82\x83\x90";  // TODO ?
+    char &lchar = invisible;
+    const char *invisible_str = "\x80\x81\x82\x83\x90";  // TODO ?
     dbg(a);
     dbg(b);
     dbg(c);
@@ -117,35 +117,34 @@ int main() {
     dbg(sizeof(int));
     dbg(3 + 1.0);
     std::string strstr = "str";
-    const char* ccccc = "meme";
+    const char *ccccc = "meme";
     dbg(strstr);
     dbg(ccccc);
   }
   {
     dbg("test for container");
-    std::vector<int> vec{1, 2, 3};
+    std::vector<int> vec{ 1, 2, 3 };
     dbg(vec);
-    const std::vector<int> cvec{1, 2, 3};
+    const std::vector<int> cvec{ 1, 2, 3 };
     dbg(cvec);
     std::vector<long> empty_vec{};
     dbg(empty_vec);
-    std::vector<char> vec_chars{'h', 'e', 'l', 'l', 'o', '\x00', '\xFE'};
+    std::vector<char> vec_chars{ 'h', 'e', 'l', 'l', 'o', '\x00', '\xFE' };
     dbg(vec_chars);
-    dbg(std::move(std::vector<int>{0, 1, 0, 1}));
-    const std::array<int, 2> dummy_array{{0, 4}};
+    dbg(std::move(std::vector<int>{ 0, 1, 0, 1 }));
+    const std::array<int, 2> dummy_array{ { 0, 4 } };
     dbg(dummy_array);
-    const std::list<int> dummy_list{1, 2, 3, 4, 5, 6, 7, 8, 9};
+    const std::list<int> dummy_list{ 1, 2, 3, 4, 5, 6, 7, 8, 9 };
     dbg(dummy_list);
-    std::vector<std::vector<int>> vec_of_vec_of_ints{{1, 2}, {3, 4, 5}};
+    std::vector<std::vector<int>> vec_of_vec_of_ints{ { 1, 2 }, { 3, 4, 5 } };
     dbg(vec_of_vec_of_ints);
-    std::vector<std::vector<std::vector<int>>> vec_of_vec_of_vec_of_ints{{{1, 2}, {3, 4, 5}},
-                                                                         {{3}}};
+    std::vector<std::vector<std::vector<int>>> vec_of_vec_of_vec_of_ints{ { { 1, 2 }, { 3, 4, 5 } }, { { 3 } } };
     dbg(vec_of_vec_of_vec_of_ints);
-    int dummy_int_array[] = {11, 22, 33};
+    int dummy_int_array[] = { 11, 22, 33 };
     dbg(dummy_int_array);
-    int longarr[] = {1, 0, -9, 5, 6, 8, 10, 12, 3, 4, 5, 11, 999};
+    int longarr[] = { 1, 0, -9, 5, 6, 8, 10, 12, 3, 4, 5, 11, 999 };
     dbg(longarr);
-    int multi_demension[4][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+    int multi_demension[4][2] = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } };
     dbg(multi_demension);
   }
   {
@@ -157,8 +156,8 @@ int main() {
     dbg("test for multiple variables");
     dbg();  // empty -> split line
     dbg(a, (b), (c), d, e);
-    int tmparr[] = {1, 2, 3};
-    std::initializer_list tmplist = {0, 9, -1, 2};
+    int tmparr[] = { 1, 2, 3 };
+    std::initializer_list tmplist = { 0, 9, -1, 2 };
     dbg(tmparr, tmplist);
     // dbg({1, 2, 3}, {0, 9, -1, 2}); // ! NOTICE
     dbg("first", a, "second", b, "third", c);
@@ -167,15 +166,15 @@ int main() {
   {
     dbg("test for special STL container");
     dbg(__cplusplus);
-    std::pair<int, long> P{1, 2l};
+    std::pair<int, long> P{ 1, 2l };
     dbg(P);
-    std::tuple<int, char, int8_t, char> tp4s{109, '\x23', 126, '\x0'};
+    std::tuple<int, char, int8_t, char> tp4s{ 109, '\x23', 126, '\x0' };
     dbg(tp4s);
     std::queue<short> q;
     q.push(1);
     q.push(20);
     dbg(q);
-    std::array<unsigned long long, 4> arr{1, 10, 99, 87};
+    std::array<unsigned long long, 4> arr{ 1, 10, 99, 87 };
     dbg(arr);
     std::string_view sv("123Yio");
     dbg(sv);
@@ -187,7 +186,7 @@ int main() {
     stk.push(0);
     stk.push(999);
     dbg(stk);
-    dbg(std::string_view{"test"});
+    dbg(std::string_view{ "test" });
     dbg(std::make_optional<bool>(false));
   }
   {
@@ -222,16 +221,16 @@ int main() {
     struct POD {
       int a, b;
     };
-    POD pod{1, 2};
+    POD pod{ 1, 2 };
     dbg(pod.a);
     dbg(pod.b);
     dbg(pod);
-    gb_struct gs{1, 2, 3, 4};
+    gb_struct gs{ 1, 2, 3, 4 };
     dbg(gs);
     gb_class_private gcp;
     dbg(gcp);
     dbg(std::is_aggregate_v<gb_class_private>);
-    gb_class gc{166};
+    gb_class gc{ 166 };
     dbg(gc);
     dbg(std::is_aggregate_v<gb_class>);
     none no;
@@ -246,14 +245,14 @@ int main() {
         int integer;
         double decimal;
       } in;
-      int* b;
-      const char* cs;
+      int *b;
+      const char *cs;
       char ch;
       std::string name;
     };
     dbg(dbg::flatten::unique_counter_impl<complex_data>());
     int tmp = 6;
-    complex_data cd = {{1, 2, 3}, {6, 6.6}, &tmp, "complex", 'P', "Alex"};
+    complex_data cd = { { 1, 2, 3 }, { 6, 6.6 }, &tmp, "complex", 'P', "Alex" };
     dbg(cd);
   }
   {
@@ -282,14 +281,14 @@ int main() {
     v = 12;
     dbg(v);
     struct sp {
-      int a[2] = {0, 1};
+      int a[2] = { 0, 1 };
       int b = 6;
-      int c[4] = {-1, 1, 2, -2};
+      int c[4] = { -1, 1, 2, -2 };
     };
     sp sp_obj;
     dbg(sp_obj);
-    int arr[2] = {-1, 1};
-    int (&brr)[2] = arr;
+    int arr[2] = { -1, 1 };
+    int(&brr)[2] = arr;
     dbg(brr);
     std::map<std::string, int> mp;
     dbg(mp);
@@ -308,14 +307,14 @@ int main() {
       struct tao {
         struct tao2 {
           char d = 'A';
-          int data[4] = {0, 9, 8, 9};
+          int data[4] = { 0, 9, 8, 9 };
         };
         tao2 tmp;
         int tag = -1;
       };
       tao t;
     };
-    nest nst{{1, 2}, 5};
+    nest nst{ { 1, 2 }, 5 };
     dbg(nst);
     struct big {
       int a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q;
@@ -327,7 +326,7 @@ int main() {
       } in;
       int c;
     };
-    outer o = {{1, 2}, 3};
+    outer o = { { 1, 2 }, 3 };
     dbg(o);
   }
   return 0;
