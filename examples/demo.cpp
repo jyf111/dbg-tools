@@ -44,5 +44,6 @@ int main() {
   DBG(bb);
   uint8_t ttt = 1;
   DBG(ttt);
+  DBG(true);
   return 0;
 }

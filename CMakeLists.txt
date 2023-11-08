@@ -11,7 +11,6 @@ target_compile_features(${PROJECT_NAME}
     cxx_std_20
 )
 
-
 target_include_directories(${PROJECT_NAME}
   INTERFACE
     $<BUILD_INTERFACE:${${PROJECT_NAME}_SOURCE_DIR}>

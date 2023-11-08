@@ -159,40 +159,42 @@ inline std::string invisible_print(const std::string &s) {
 template <typename T>
 struct type {};
 
-template <typename T>
-struct hex {
-  hex(T _val) : val(_val) {}
-  T val;
+template <typename T, size_t N>
+struct base {
+  static_assert(std::is_integral<T>::value, "Only integral types are supported!");
+
+  base(T val) : val_(val) {}
+
+  T val_;
 };
 template <typename T>
-struct oct {
-  oct(T _val) : val(_val) {}
-  T val;
-};
+using bin = base<T, 2>;
 template <typename T>
-struct bin {
-  bin(T _val) : val(_val) {}
-  T val;
-};
+using oct = base<T, 8>;
+template <typename T>
+using hex = base<T, 16>;
 
 template <int &...ExplicitArgumentBarrier, typename T>
 std::enable_if_t<!std::is_enum_v<T> && !std::is_union_v<T>, std::string> type_name(type<T>) {
-  std::string_view pretty_function(std::source_location::current().function_name());
-  const auto L = pretty_function.find("T = ") + 4;
-  const auto R = pretty_function.find_last_of(';');
-  return std::string(pretty_function.substr(L, R - L));
+  std::string_view pretty_name(std::source_location::current().function_name());
+  const auto L = pretty_name.find("T = ") + 4;
+  const auto R = pretty_name.find_last_of(';');
+  return std::string(pretty_name.substr(L, R - L));
 }
 
-#define _DBG_PRIMITIVE_TYPE_NAME(std_type, bit_type, bits) \
+#define DBG_PRIMITIVE_TYPE_NAME(std_type, bit_type, bits) \
   inline std::string type_name(type<std_type>) { return sizeof(std_type) * CHAR_BIT == bits ? #bit_type : #std_type; }
-_DBG_PRIMITIVE_TYPE_NAME(short, int16_t, 16);
-_DBG_PRIMITIVE_TYPE_NAME(unsigned short, uint16_t, 16);
-_DBG_PRIMITIVE_TYPE_NAME(int, int32_t, 32);
-_DBG_PRIMITIVE_TYPE_NAME(unsigned int, uint32_t, 32);
-_DBG_PRIMITIVE_TYPE_NAME(long, int64_t, 64);
-_DBG_PRIMITIVE_TYPE_NAME(unsigned long, int64_t, 64);
-_DBG_PRIMITIVE_TYPE_NAME(long long, int16_t, 64);
-_DBG_PRIMITIVE_TYPE_NAME(unsigned long long, uint16_t, 64);
+DBG_PRIMITIVE_TYPE_NAME(signed char, int8_t, 8);
+DBG_PRIMITIVE_TYPE_NAME(unsigned char, uint8_t, 8);
+DBG_PRIMITIVE_TYPE_NAME(short, int16_t, 16);
+DBG_PRIMITIVE_TYPE_NAME(unsigned short, uint16_t, 16);
+DBG_PRIMITIVE_TYPE_NAME(int, int32_t, 32);
+DBG_PRIMITIVE_TYPE_NAME(unsigned int, uint32_t, 32);
+DBG_PRIMITIVE_TYPE_NAME(long, int64_t, 64);
+DBG_PRIMITIVE_TYPE_NAME(unsigned long, uint64_t, 64);
+DBG_PRIMITIVE_TYPE_NAME(long long, int64_t, 64);
+DBG_PRIMITIVE_TYPE_NAME(unsigned long long, uint64_t, 64);
+#undef DBG_PRIMITIVE_TYPE_NAME
 
 inline std::string type_name(type<std::any>) { return "std::any"; }
 inline std::string type_name(type<std::string>) { return "std::string"; }
@@ -229,54 +231,56 @@ std::string get_type_name() {
 
 template <typename Enum>
 std::enable_if_t<std::is_enum_v<Enum>, std::string> type_name(type<Enum>) {
-  std::string_view pretty_function(std::source_location::current().function_name());
-  const auto L = pretty_function.find("Enum = ") + 7;
-  const auto R = pretty_function.find_last_of(';');
-  std::string name(pretty_function.substr(L, R - L));
+  std::string_view pretty_name(std::source_location::current().function_name());
+  const auto L = pretty_name.find("Enum = ") + 7;
+  const auto R = pretty_name.find_last_of(';');
+  std::string name(pretty_name.substr(L, R - L));
   return "enum " + name + " : " + get_type_name<std::underlying_type_t<Enum>>();
 }
 
 template <typename Union>
 std::enable_if_t<std::is_union_v<Union>, std::string> type_name(type<Union>) {
-  std::string_view pretty_function(std::source_location::current().function_name());
-  const auto L = pretty_function.find("Union = ") + 8;
-  const auto R = pretty_function.find_last_of(';');
-  std::string name(pretty_function.substr(L, R - L));
+  std::string_view pretty_name(std::source_location::current().function_name());
+  const auto L = pretty_name.find("Union = ") + 8;
+  const auto R = pretty_name.find_last_of(';');
+  std::string name(pretty_name.substr(L, R - L));
   return "union " + name;
 }
 
-#define _DBG_TEMPLATE_TYPE_NAME_1(std_type, temp, get_temp_type_name) \
-  template <temp>                                                     \
-  inline std::string type_name(type<std_type<T>>) {                   \
-    return #std_type "<" + get_temp_type_name + ">";                  \
+#define DBG_TEMPLATE_TYPE_NAME_1(std_type, temp, get_temp_type_name) \
+  template <temp>                                                    \
+  inline std::string type_name(type<std_type<T>>) {                  \
+    return #std_type "<" + get_temp_type_name + ">";                 \
   }
-_DBG_TEMPLATE_TYPE_NAME_1(std::vector, typename T, get_type_name<T>());
-_DBG_TEMPLATE_TYPE_NAME_1(std::valarray, typename T, get_type_name<T>());
-_DBG_TEMPLATE_TYPE_NAME_1(std::list, typename T, get_type_name<T>());
-_DBG_TEMPLATE_TYPE_NAME_1(std::forward_list, typename T, get_type_name<T>());
-_DBG_TEMPLATE_TYPE_NAME_1(std::initializer_list, typename T, get_type_name<T>());
-_DBG_TEMPLATE_TYPE_NAME_1(std::stack, typename T, get_type_name<T>());
-_DBG_TEMPLATE_TYPE_NAME_1(std::deque, typename T, get_type_name<T>());
-_DBG_TEMPLATE_TYPE_NAME_1(std::queue, typename T, get_type_name<T>());
-_DBG_TEMPLATE_TYPE_NAME_1(std::priority_queue, typename T, get_type_name<T>());
-_DBG_TEMPLATE_TYPE_NAME_1(std::set, typename T, get_type_name<T>());
-_DBG_TEMPLATE_TYPE_NAME_1(std::multiset, typename T, get_type_name<T>());
-_DBG_TEMPLATE_TYPE_NAME_1(std::unordered_set, typename T, get_type_name<T>());
-_DBG_TEMPLATE_TYPE_NAME_1(std::unordered_multiset, typename T, get_type_name<T>());
-_DBG_TEMPLATE_TYPE_NAME_1(std::optional, typename T, get_type_name<T>());
-_DBG_TEMPLATE_TYPE_NAME_1(std::bitset, size_t T, std::to_string(T));
+DBG_TEMPLATE_TYPE_NAME_1(std::vector, typename T, get_type_name<T>());
+DBG_TEMPLATE_TYPE_NAME_1(std::valarray, typename T, get_type_name<T>());
+DBG_TEMPLATE_TYPE_NAME_1(std::list, typename T, get_type_name<T>());
+DBG_TEMPLATE_TYPE_NAME_1(std::forward_list, typename T, get_type_name<T>());
+DBG_TEMPLATE_TYPE_NAME_1(std::initializer_list, typename T, get_type_name<T>());
+DBG_TEMPLATE_TYPE_NAME_1(std::stack, typename T, get_type_name<T>());
+DBG_TEMPLATE_TYPE_NAME_1(std::deque, typename T, get_type_name<T>());
+DBG_TEMPLATE_TYPE_NAME_1(std::queue, typename T, get_type_name<T>());
+DBG_TEMPLATE_TYPE_NAME_1(std::priority_queue, typename T, get_type_name<T>());
+DBG_TEMPLATE_TYPE_NAME_1(std::set, typename T, get_type_name<T>());
+DBG_TEMPLATE_TYPE_NAME_1(std::multiset, typename T, get_type_name<T>());
+DBG_TEMPLATE_TYPE_NAME_1(std::unordered_set, typename T, get_type_name<T>());
+DBG_TEMPLATE_TYPE_NAME_1(std::unordered_multiset, typename T, get_type_name<T>());
+DBG_TEMPLATE_TYPE_NAME_1(std::optional, typename T, get_type_name<T>());
+DBG_TEMPLATE_TYPE_NAME_1(std::bitset, size_t T, std::to_string(T));
+#undef DBG_TEMPLATE_TYPE_NAME_1
 
-#define _DBG_TEMPLATE_TYPE_NAME_2(std_type, temp1, get_temp1_type_name, temp2, get_temp2_type_name) \
-  template <temp1, temp2>                                                                           \
-  inline std::string type_name(type<std_type<T1, T2>>) {                                            \
-    return #std_type "<" + get_temp1_type_name + ", " + get_temp2_type_name + ">";                  \
+#define DBG_TEMPLATE_TYPE_NAME_2(std_type, temp1, get_temp1_type_name, temp2, get_temp2_type_name) \
+  template <temp1, temp2>                                                                          \
+  inline std::string type_name(type<std_type<T1, T2>>) {                                           \
+    return #std_type "<" + get_temp1_type_name + ", " + get_temp2_type_name + ">";                 \
   }
-_DBG_TEMPLATE_TYPE_NAME_2(std::array, typename T1, get_type_name<T1>(), size_t T2, std::to_string(T2));
-_DBG_TEMPLATE_TYPE_NAME_2(std::pair, typename T1, get_type_name<T1>(), typename T2, get_type_name<T2>());
-_DBG_TEMPLATE_TYPE_NAME_2(std::map, typename T1, get_type_name<T1>(), typename T2, get_type_name<T2>());
-_DBG_TEMPLATE_TYPE_NAME_2(std::multimap, typename T1, get_type_name<T1>(), typename T2, get_type_name<T2>());
-_DBG_TEMPLATE_TYPE_NAME_2(std::unordered_map, typename T1, get_type_name<T1>(), typename T2, get_type_name<T2>());
-_DBG_TEMPLATE_TYPE_NAME_2(std::unordered_multimap, typename T1, get_type_name<T1>(), typename T2, get_type_name<T2>());
+DBG_TEMPLATE_TYPE_NAME_2(std::array, typename T1, get_type_name<T1>(), size_t T2, std::to_string(T2));
+DBG_TEMPLATE_TYPE_NAME_2(std::pair, typename T1, get_type_name<T1>(), typename T2, get_type_name<T2>());
+DBG_TEMPLATE_TYPE_NAME_2(std::map, typename T1, get_type_name<T1>(), typename T2, get_type_name<T2>());
+DBG_TEMPLATE_TYPE_NAME_2(std::multimap, typename T1, get_type_name<T1>(), typename T2, get_type_name<T2>());
+DBG_TEMPLATE_TYPE_NAME_2(std::unordered_map, typename T1, get_type_name<T1>(), typename T2, get_type_name<T2>());
+DBG_TEMPLATE_TYPE_NAME_2(std::unordered_multimap, typename T1, get_type_name<T1>(), typename T2, get_type_name<T2>());
+#undef DBG_TEMPLATE_TYPE_NAME_2
 
 template <typename... T>
 std::string type_list_to_string() {
@@ -301,16 +305,8 @@ inline std::string type_name(type<type<T>>) {
   return get_type_name<T>();
 }
 
-template <typename T>
-std::string type_name(type<hex<T>>) {
-  return get_type_name<T>();
-}
-template <typename T>
-std::string type_name(type<oct<T>>) {
-  return get_type_name<T>();
-}
-template <typename T>
-std::string type_name(type<bin<T>>) {
+template <typename T, size_t N>
+std::string type_name(type<base<T, N>>) {
   return get_type_name<T>();
 }
 
@@ -326,7 +322,6 @@ struct detector<Default, std::void_t<Op<Args...>>, Op, Args...> {
   using value_t = std::true_type;
   using type = Op<Args...>;
 };
-
 }  // namespace helper
 
 struct nonesuch {};
@@ -339,13 +334,10 @@ constexpr bool is_detected_v = is_detected<Op, Args...>::value;
 
 template <typename T>
 using detect_begin_t = decltype(std::begin(std::declval<T>()));
-
 template <typename T>
 using detect_end_t = decltype(std::end(std::declval<T>()));
-
 template <typename T>
 using detect_size_t = decltype(std::size(std::declval<T>()));
-
 template <typename T>
 using detect_ostream_operator_t = decltype(std::declval<std::ostream &>() << std::declval<T>());
 
@@ -353,7 +345,6 @@ template <typename T>
 constexpr bool is_container_v =
     std::conjunction_v<is_detected<detect_begin_t, const T>, is_detected<detect_end_t, const T>,
                        is_detected<detect_size_t, const T>, std::negation<std::is_same<std::string, std::decay_t<T>>>>;
-
 template <typename T>
 constexpr bool has_ostream_operator = is_detected_v<detect_ostream_operator_t, T>;
 
@@ -557,97 +548,76 @@ constexpr auto flatten_to_tuple(const T &t) noexcept {
 }  // namespace flatten
 
 namespace printer {
-inline void print_char(std::ostream &os, const char &value) {
-  if (value >= 0x20 && value <= 0x7E) {
-    os << value;
-  } else {
-    std::ostringstream tmp;
-    tmp << "\\x" << std::setw(2) << std::setfill('0') << std::hex << std::uppercase << (0xFF & value);
-    os << invisible_print(tmp.str());
-  }
-}
-
 template <typename T>
-std::enable_if_t<has_ostream_operator<T>, void> basic_print(std::ostream &os, const T &value) {
+std::enable_if_t<has_ostream_operator<T>, void> print_impl(std::ostream &os, const T &value) {
   os << value;
 }
-
 template <typename T>
-std::enable_if_t<!has_ostream_operator<T>, void> basic_print(std::ostream &os, const T &) {
-  os << printer::error_print("ostream operator << not support!");
+std::enable_if_t<!has_ostream_operator<T>, void> print_impl(std::ostream &os, const T &) {
+  os << printer::error_print("This type does not support the << ostream operator!");
+}
+inline void print_impl(std::ostream &os, const char &value) {
+  if (std::isprint(value)) {
+    os << value;
+  } else {
+    std::ostringstream oss;
+    oss << "\\x" << std::setw(2) << std::setfill('0') << std::hex << std::uppercase << (0xFF & value);
+    os << invisible_print(oss.str());
+  }
 }
 
 template <typename T>
 std::enable_if_t<!is_container_v<T> && !std::is_enum_v<T> && !std::is_aggregate_v<T>, void> print(std::ostream &os,
                                                                                                   const T &value) {
-  basic_print(os, value);
+  print_impl(os, value);
 }
 
 // forward declaration for print
 template <typename Enum>
 std::enable_if_t<std::is_enum_v<Enum>, void> print(std::ostream &os, const Enum &value);
-
 template <typename Container>
 std::enable_if_t<is_container_v<Container>, void> print(std::ostream &os, const Container &value);
-
 template <typename Aggregate>
 std::enable_if_t<std::is_aggregate_v<Aggregate> && !is_container_v<Aggregate>, void> print(std::ostream &os,
                                                                                            const Aggregate &value);
-
 template <typename... Ts>
 void print(std::ostream &os, const std::tuple<Ts...> &value);
-
 template <>
 inline void print(std::ostream &os, const std::tuple<> &);
-
-template <typename T>
-void print(std::ostream &os, const std::stack<T> &value);
-
-template <typename T>
-void print(std::ostream &os, const std::queue<T> &value);
-
 inline void print(std::ostream &os, const std::string &value);
-
 inline void print(std::ostream &os, const std::string_view &value);
-
 inline void print(std::ostream &os, const char *const &value);
-
 inline void print(std::ostream &os, const char &value);
-
 inline void print(std::ostream &os, const signed char &value);
-
 inline void print(std::ostream &os, const unsigned char &value);
-
 inline void print(std::ostream &os, const std::nullptr_t &value);
-
 inline void print(std::ostream &os, const std::nullopt_t &value);
-
 template <typename T1, typename T2>
 void print(std::ostream &os, const std::pair<T1, T2> &value);
-
 template <typename T>
 void print(std::ostream &os, T *const &value);
-
 template <>
 inline void print(std::ostream &os, char *const &value);
-
 template <>
 inline void print(std::ostream &os, signed char *const &value);
-
 template <>
 inline void print(std::ostream &os, unsigned char *const &value);
-
 template <typename T>
 void print(std::ostream &os, const std::optional<T> &value);
-
 template <typename T, typename Deleter>
 void print(std::ostream &os, std::unique_ptr<T, Deleter> &value);
-
 template <typename T>
 void print(std::ostream &os, std::shared_ptr<T> &value);
-
 template <typename... Ts>
 void print(std::ostream &os, const std::variant<Ts...> &value);
+template <typename T>
+void print(std::ostream &os, const std::stack<T> &value);
+template <typename T>
+void print(std::ostream &os, const std::queue<T> &value);
+template <typename T>
+void print(std::ostream &os, const std::priority_queue<T> &value);
+template <typename T, size_t N>
+void print(std::ostream &os, const base<T, N> &value);
 // end of forward declaration for print
 
 template <typename Enum>
@@ -667,12 +637,10 @@ std::enable_if_t<is_container_v<Container>, void> print(std::ostream &os, const 
       os << ", ";
     }
   }
-
   if (size > n) {
     os << ", ...";
-    os << " size:" << size;
+    os << " size: " << size;
   }
-
   os << "]";
 }
 
@@ -691,7 +659,6 @@ struct print_tuple {
     print(os, std::get<idx>(tuple));
   }
 };
-
 template <>
 struct print_tuple<0> {
   template <typename... Ts>
@@ -699,77 +666,34 @@ struct print_tuple<0> {
     print(os, std::get<0>(tuple));
   }
 };
-
 template <typename... Ts>
 void print(std::ostream &os, const std::tuple<Ts...> &value) {
   os << "{";
   print_tuple<sizeof...(Ts) - 1>()(os, value);
   os << "}";
 }
-
 template <>
 inline void print(std::ostream &os, const std::tuple<> &) {
   os << "{}";
 }
 
-template <typename T>
-void print(std::ostream &os, const std::stack<T> &value) {
-  auto stk = value;
-  os << "{";
-  std::stringstream tmp;
-  if (!stk.empty()) {
-    print(tmp, stk.top());
-    stk.pop();
-
-    while (!stk.empty()) {
-      tmp << " ,";  // ! notice
-      print(tmp, stk.top());
-      stk.pop();
-    }
-  }
-  auto str = tmp.str();
-  std::reverse(str.begin(), str.end());
-  os << str << '}';
-}
-
-template <typename T>
-void print(std::ostream &os, const std::queue<T> &value) {
-  auto q = value;
-  os << "{";
-  if (!q.empty()) {
-    print(os, q.front());
-    q.pop();
-
-    while (!q.empty()) {
-      os << ", ";
-      print(os, q.front());
-      q.pop();
-    }
-  }
-  os << '}';
-}
-
 inline void print(std::ostream &os, const std::string &value) {
   os << '"';
-  for (const auto &c : value) print_char(os, c);
+  for (const auto &c : value) print_impl(os, c);
   os << '"';
 }
-
 inline void print(std::ostream &os, const std::string_view &value) { print(os, std::string(value)); }
-
 inline void print(std::ostream &os, const char *const &value) { print(os, std::string(value)); }
 
 inline void print(std::ostream &os, const bool &value) { os << std::boolalpha << value << std::noboolalpha; }
 
 inline void print(std::ostream &os, const char &value) {
   os << "'";
-  print_char(os, value);
+  print_impl(os, value);
   os << "'";
 }
-
-inline void print(std::ostream &os, const signed char &value) { os << static_cast<int>(value); }
-
-inline void print(std::ostream &os, const unsigned char &value) { os << static_cast<int>(value); }
+inline void print(std::ostream &os, const signed char &value) { os << +value; }
+inline void print(std::ostream &os, const unsigned char &value) { os << +value; }
 
 inline void print(std::ostream &os, const std::nullptr_t &value) { os << "nullptr"; }
 
@@ -792,7 +716,6 @@ void print(std::ostream &os, char *const &value) {
     os << reinterpret_cast<int *>(value);
   }
 }
-
 template <>
 void print(std::ostream &os, signed char *const &value) {
   if (value == nullptr) {
@@ -801,7 +724,6 @@ void print(std::ostream &os, signed char *const &value) {
     os << reinterpret_cast<int *>(value);
   }
 }
-
 template <>
 void print(std::ostream &os, unsigned char *const &value) {
   if (value == nullptr) {
@@ -850,47 +772,84 @@ void print(std::ostream &os, const std::variant<Ts...> &value) {
 }
 
 template <typename T>
-std::enable_if_t<std::is_integral_v<T>, void> print(std::ostream &os, const hex<T> &value) {
-  std::ostringstream tmp;
-  tmp << std::hex << std::showbase << std::uppercase;
-  if constexpr (sizeof(T) == 1) {
-    tmp << static_cast<int>(value.val);
-  } else {
-    tmp << value.val;
+void print(std::ostream &os, const std::stack<T> &value) {
+  auto stk = value;
+
+  os << "[";
+  const size_t size = std::size(value);
+  const size_t n = std::min(config::get_container_length(), size);
+  std::vector<T> elements;
+  for (auto i = 0; i < n; i++) {
+    elements.push_back(stk.top());
+    stk.pop();
   }
-  os << tmp.str();
-}
-
-template <typename T>
-std::enable_if_t<!std::is_integral_v<T>, void> print(std::ostream &os, const hex<T> &value) {
-  os << error_print("hex only support for integral type!");
-}
-
-template <typename T>
-std::enable_if_t<std::is_integral_v<T>, void> print(std::ostream &os, const oct<T> &value) {
-  std::ostringstream tmp;
-  tmp << std::oct << std::showbase << std::uppercase;
-  if constexpr (sizeof(T) == 1) {
-    tmp << static_cast<int>(value.val);
-  } else {
-    tmp << value.val;
+  if (size > n) {
+    os << "size: " << size;
+    os << " ..., ";
   }
-  os << tmp.str();
+  for (auto i = 0; i < n; i++) {
+    os << elements[n - 1 - i];
+    if (i != n - 1) {
+      os << ", ";
+    }
+  }
+  os << "]";
+}
+template <typename T>
+void print(std::ostream &os, const std::queue<T> &value) {
+  auto que = value;
+
+  os << "[";
+  const size_t size = std::size(value);
+  const size_t n = std::min(config::get_container_length(), size);
+  for (auto i = 0; i < n; i++) {
+    print(os, que.front());
+    que.pop();
+    if (i != n - 1) {
+      os << ", ";
+    }
+  }
+  if (size > n) {
+    os << ", ...";
+    os << " size: " << size;
+  }
+  os << "]";
+}
+template <typename T>
+void print(std::ostream &os, const std::priority_queue<T> &value) {
+  auto pque = value;
+
+  os << "[";
+  const size_t size = std::size(value);
+  const size_t n = std::min(config::get_container_length(), size);
+  for (auto i = 0; i < n; i++) {
+    print(os, pque.top());
+    pque.pop();
+    if (i != n - 1) {
+      os << ", ";
+    }
+  }
+  if (size > n) {
+    os << ", ...";
+    os << " size: " << size;
+  }
+  os << "]";
 }
 
-template <typename T>
-std::enable_if_t<!std::is_integral_v<T>, void> print(std::ostream &os, const oct<T> &value) {
-  os << error_print("oct only support for integral type!");
-}
-
-template <typename T>
-std::enable_if_t<std::is_integral_v<T>, void> print(std::ostream &os, const bin<T> &value) {
-  os << "0B" << std::bitset<8 * sizeof(T)>(value.val);
-}
-
-template <typename T>
-std::enable_if_t<!std::is_integral_v<T>, void> print(std::ostream &os, const bin<T> &value) {
-  os << error_print("bin only support for integral type!");
+template <typename T, size_t N>
+void print(std::ostream &os, const base<T, N> &value) {
+  if constexpr (N == 2) {
+    os << "0b" << std::bitset<sizeof(T) * CHAR_BIT>(value.val_);
+  } else {
+    std::ostringstream oss;
+    if constexpr (N == 8)
+      oss << std::oct << "0o";
+    else if constexpr (N == 16)
+      oss << std::hex << "0x";
+    oss << std::setw(sizeof(T)) << std::setfill('0');
+    oss << std::uppercase << +value.val_;
+    os << oss.str();
+  }
 }
 }  // namespace printer
 
@@ -1006,7 +965,6 @@ class Debugger {
 };
 #undef types
 #undef exprs
-
 }  // namespace dbg
 
 #define DBG_PARENS ()

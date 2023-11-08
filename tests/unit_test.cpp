@@ -170,6 +170,11 @@ TEST_CASE("special STL container", "[STL][container]") {
     q.push(20);
     DBG(q);
   }
+  SECTION("long queue") {
+    std::queue<short> q;
+    for (short i = 0; i < 25; i++) q.push(i);
+    DBG(q);
+  }
   SECTION("array") {
     std::array<unsigned long long, 4> arr{ 1, 10, 99, 87 };
     DBG(arr);
@@ -191,6 +196,17 @@ TEST_CASE("special STL container", "[STL][container]") {
     stk.push(0);
     stk.push(999);
     DBG(stk);
+  }
+  SECTION("long stack") {
+    std::stack<uint64_t> stk;
+    for (uint64_t i = 0; i < 20; i++) stk.push(i);
+    DBG(stk);
+  }
+  SECTION("priority queue") {
+    std::priority_queue<int> pq;
+    pq.push(30);
+    pq.push(10);
+    DBG(pq);
   }
   SECTION("optional") {
     DBG(std::make_optional<bool>(false));
@@ -248,12 +264,6 @@ TEST_CASE("base output", "[base]") {
   SECTION("oct") {
     DBG(dbg::oct(value));
     DBG(dbg::oct(neg));
-  }
-  SECTION("none integral") {
-    std::string str = "123";
-    DBG(dbg::hex(str));
-    DBG(dbg::bin("12"));
-    DBG(dbg::oct('3'));
   }
 }
 
