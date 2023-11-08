@@ -43,13 +43,13 @@ int main() {
       sum += rand() % i;
     }
     timer.stop();
-    timer.log("for loop");
+    timer.DBG("for loop");
     timer.restart("start for loop");
     for (int i = 1; i < 10000000; i++) {
       sum += rand() % i;
     }
     timer.stop();
-    timer.log("for loop");
+    timer.DBG("for loop");
     dbg::timer::show();
   }
   {

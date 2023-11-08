@@ -11,6 +11,7 @@ target_compile_features(${PROJECT_NAME}
     cxx_std_20
 )
 
+
 target_include_directories(${PROJECT_NAME}
   INTERFACE
     $<BUILD_INTERFACE:${${PROJECT_NAME}_SOURCE_DIR}>
@@ -24,6 +25,7 @@ option(BUILD_EXAMPLES "build examples" OFF)
 if (ENABLE_TESTS)
   find_package(Catch2 3 REQUIRED)
   add_executable(unit_test tests/unit_test.cpp)
+  target_compile_options(unit_test PRIVATE -std=c++20)
   target_link_libraries(unit_test PRIVATE Catch2::Catch2WithMain)
   target_include_directories(unit_test PRIVATE ${PROJECT_SOURCE_DIR}/include)
   include(CTest)

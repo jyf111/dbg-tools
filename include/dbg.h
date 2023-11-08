@@ -7,6 +7,7 @@
 #include <bitset>
 #include <chrono>
 #include <cstring>
+#include <forward_list>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -16,6 +17,7 @@
 #include <optional>
 #include <queue>
 #include <set>
+#include <source_location>
 #include <sstream>
 #include <stack>
 #include <string>
@@ -155,221 +157,158 @@ inline std::string invisible_print(const std::string &s) {
 }  // namespace printer
 
 template <typename T>
+struct type {};
+
+template <typename T>
 struct hex {
   hex(T _val) : val(_val) {}
   T val;
 };
-
 template <typename T>
 struct oct {
   oct(T _val) : val(_val) {}
   T val;
 };
-
 template <typename T>
 struct bin {
   bin(T _val) : val(_val) {}
   T val;
 };
 
-template <typename T>
-struct type {};
-
 template <int &...ExplicitArgumentBarrier, typename T>
 std::enable_if_t<!std::is_enum_v<T> && !std::is_union_v<T>, std::string> type_name(type<T>) {
-  std::string_view pretty_function(__PRETTY_FUNCTION__);
+  std::string_view pretty_function(std::source_location::current().function_name());
   const auto L = pretty_function.find("T = ") + 4;
   const auto R = pretty_function.find_last_of(';');
   return std::string(pretty_function.substr(L, R - L));
 }
 
-inline std::string type_name(type<short>) {
-  return "short";  // short int
-}
+#define _DBG_PRIMITIVE_TYPE_NAME(std_type, bit_type, bits) \
+  inline std::string type_name(type<std_type>) { return sizeof(std_type) * CHAR_BIT == bits ? #bit_type : #std_type; }
+_DBG_PRIMITIVE_TYPE_NAME(short, int16_t, 16);
+_DBG_PRIMITIVE_TYPE_NAME(unsigned short, uint16_t, 16);
+_DBG_PRIMITIVE_TYPE_NAME(int, int32_t, 32);
+_DBG_PRIMITIVE_TYPE_NAME(unsigned int, uint32_t, 32);
+_DBG_PRIMITIVE_TYPE_NAME(long, int64_t, 64);
+_DBG_PRIMITIVE_TYPE_NAME(unsigned long, int64_t, 64);
+_DBG_PRIMITIVE_TYPE_NAME(long long, int16_t, 64);
+_DBG_PRIMITIVE_TYPE_NAME(unsigned long long, uint16_t, 64);
 
-inline std::string type_name(type<unsigned short>) {
-  return "unsigned short";  // short unsigned int
-}
+inline std::string type_name(type<std::any>) { return "std::any"; }
+inline std::string type_name(type<std::string>) { return "std::string"; }
+inline std::string type_name(type<std::string_view>) { return "std::string_view"; }
 
-inline std::string type_name(type<long>) {
-  return "long";  // long int
-}
-
-inline std::string type_name(type<unsigned long>) {
-  return "unsigned long";  // unsigned long int
-}
-
-inline std::string type_name(type<long long>) {
-  return "long long";  // long long int
-}
-
-inline std::string type_name(type<unsigned long long>) {
-  return "unsigned long long";  // unsigned long long int
-}
-
-inline std::string type_name(type<std::string>) {
-  return "std::string";  // std::__cxx11::basic_string<char>
-}
-
+// TODO 完美转发有什么问题
 template <typename T>
 std::string get_type_name() {
-  if (std::is_volatile<T>::value) {
-    if (std::is_pointer<T>::value) {
-      return get_type_name<typename std::remove_volatile<T>::type>() + " volatile";
+  if (std::is_volatile_v<T>) {
+    if (std::is_pointer_v<T>) {
+      return get_type_name<std::remove_volatile_t<T>>() + " volatile";
     } else {
-      return "volatile " + get_type_name<typename std::remove_volatile<T>::type>();
+      return "volatile " + get_type_name<std::remove_volatile_t<T>>();
     }
   }
-  if (std::is_const<T>::value) {
-    if (std::is_pointer<T>::value) {
-      return get_type_name<typename std::remove_const<T>::type>() + " const";
+  if (std::is_const_v<T>) {
+    if (std::is_pointer_v<T>) {
+      return get_type_name<std::remove_const_t<T>>() + " const";
     } else {
-      return "const " + get_type_name<typename std::remove_const<T>::type>();
+      return "const " + get_type_name<std::remove_const_t<T>>();
     }
   }
-  if (std::is_pointer<T>::value) {
-    return get_type_name<typename std::remove_pointer<T>::type>() + "*";
+  if (std::is_pointer_v<T>) {
+    return get_type_name<std::remove_pointer_t<T>>() + " *";
   }
-  if (std::is_lvalue_reference<T>::value) {
-    return get_type_name<typename std::remove_reference<T>::type>() + "&";
+  if (std::is_lvalue_reference_v<T>) {
+    return get_type_name<std::remove_reference_t<T>>() + " &";
   }
-  if (std::is_rvalue_reference<T>::value) {
-    return get_type_name<typename std::remove_reference<T>::type>() + "&&";
+  if (std::is_rvalue_reference_v<T>) {
+    return get_type_name<std::remove_reference_t<T>>() + " &&";
   }
-  return type_name(type<T>());  // thanks for ADL
+  return type_name(type<T>{});  // thanks for ADL
 }
 
 template <typename Enum>
 std::enable_if_t<std::is_enum_v<Enum>, std::string> type_name(type<Enum>) {
-  std::string_view pretty_function(__PRETTY_FUNCTION__);
+  std::string_view pretty_function(std::source_location::current().function_name());
   const auto L = pretty_function.find("Enum = ") + 7;
   const auto R = pretty_function.find_last_of(';');
   std::string name(pretty_function.substr(L, R - L));
-  return "enum " + name + ": " + get_type_name<std::underlying_type_t<Enum>>();
+  return "enum " + name + " : " + get_type_name<std::underlying_type_t<Enum>>();
 }
 
 template <typename Union>
 std::enable_if_t<std::is_union_v<Union>, std::string> type_name(type<Union>) {
-  std::string_view pretty_function(__PRETTY_FUNCTION__);
+  std::string_view pretty_function(std::source_location::current().function_name());
   const auto L = pretty_function.find("Union = ") + 8;
   const auto R = pretty_function.find_last_of(';');
   std::string name(pretty_function.substr(L, R - L));
   return "union " + name;
 }
 
-// template specialize
-template <typename T>
-std::string type_name(type<type<T>>) {
-  return get_type_name<T>();
-}
+#define _DBG_TEMPLATE_TYPE_NAME_1(std_type, temp, get_temp_type_name) \
+  template <temp>                                                     \
+  inline std::string type_name(type<std_type<T>>) {                   \
+    return #std_type "<" + get_temp_type_name + ">";                  \
+  }
+_DBG_TEMPLATE_TYPE_NAME_1(std::vector, typename T, get_type_name<T>());
+_DBG_TEMPLATE_TYPE_NAME_1(std::valarray, typename T, get_type_name<T>());
+_DBG_TEMPLATE_TYPE_NAME_1(std::list, typename T, get_type_name<T>());
+_DBG_TEMPLATE_TYPE_NAME_1(std::forward_list, typename T, get_type_name<T>());
+_DBG_TEMPLATE_TYPE_NAME_1(std::initializer_list, typename T, get_type_name<T>());
+_DBG_TEMPLATE_TYPE_NAME_1(std::stack, typename T, get_type_name<T>());
+_DBG_TEMPLATE_TYPE_NAME_1(std::deque, typename T, get_type_name<T>());
+_DBG_TEMPLATE_TYPE_NAME_1(std::queue, typename T, get_type_name<T>());
+_DBG_TEMPLATE_TYPE_NAME_1(std::priority_queue, typename T, get_type_name<T>());
+_DBG_TEMPLATE_TYPE_NAME_1(std::set, typename T, get_type_name<T>());
+_DBG_TEMPLATE_TYPE_NAME_1(std::multiset, typename T, get_type_name<T>());
+_DBG_TEMPLATE_TYPE_NAME_1(std::unordered_set, typename T, get_type_name<T>());
+_DBG_TEMPLATE_TYPE_NAME_1(std::unordered_multiset, typename T, get_type_name<T>());
+_DBG_TEMPLATE_TYPE_NAME_1(std::optional, typename T, get_type_name<T>());
+_DBG_TEMPLATE_TYPE_NAME_1(std::bitset, size_t T, std::to_string(T));
 
-template <typename T>
-std::string type_name(type<std::vector<T>>) {
-  return "std::vector<" + get_type_name<T>() + ">";
-}
-
-template <typename T>
-inline std::string type_name(type<std::list<T>>) {
-  return "std::list<" + get_type_name<T>() + ">";  // std::__cxx11::list<T>
-}
-
-template <typename T>
-std::string type_name(type<std::deque<T>>) {
-  return "std::deque<" + get_type_name<T>() + ">";
-}
-
-template <typename T>
-std::string type_name(type<std::stack<T>>) {
-  return "std::stack<" + get_type_name<T>() + ">";
-}
-
-template <typename T>
-std::string type_name(type<std::queue<T>>) {
-  return "std::queue<" + get_type_name<T>() + ">";
-}
-
-template <typename T, std::size_t N>
-std::string type_name(type<std::array<T, N>>) {
-  return "std::array<" + get_type_name<T>() + ", " + std::to_string(N) + ">";
-}
-
-template <typename T1, typename T2>
-std::string type_name(type<std::pair<T1, T2>>) {
-  return "std::pair<" + get_type_name<T1>() + ", " + get_type_name<T2>() + ">";
-}
-
-template <typename Key>
-std::string type_name(type<std::set<Key>>) {
-  return "std::set<" + get_type_name<Key>() + ">";
-}
-
-template <typename Key>
-std::string type_name(type<std::multiset<Key>>) {
-  return "std::multiset<" + get_type_name<Key>() + ">";
-}
-
-template <typename Key, typename T>
-std::string type_name(type<std::map<Key, T>>) {
-  return "std::map<" + get_type_name<Key>() + ", " + get_type_name<T>() + ">";
-}
-
-template <typename Key, typename T>
-std::string type_name(type<std::multimap<Key, T>>) {
-  return "std::multimap<" + get_type_name<Key>() + ", " + get_type_name<T>() + ">";
-}
-
-template <typename Key, typename T>
-std::string type_name(type<std::unordered_map<Key, T>>) {
-  return "std::unordered_map<" + get_type_name<Key>() + ", " + get_type_name<T>() + ">";
-}
-
-template <typename Key>
-std::string type_name(type<std::unordered_set<Key>>) {
-  return "std::unordered_set<" + get_type_name<Key>() + ">";
-}
-
-template <typename T>
-std::string type_name(type<std::optional<T>>) {
-  return "std::optional<" + get_type_name<T>() + ">";
-}
-
-template <typename T>
-std::string type_name(type<std::initializer_list<T>>) {
-  return "std::initializer_list<" + get_type_name<T>() + ">";
-}
+#define _DBG_TEMPLATE_TYPE_NAME_2(std_type, temp1, get_temp1_type_name, temp2, get_temp2_type_name) \
+  template <temp1, temp2>                                                                           \
+  inline std::string type_name(type<std_type<T1, T2>>) {                                            \
+    return #std_type "<" + get_temp1_type_name + ", " + get_temp2_type_name + ">";                  \
+  }
+_DBG_TEMPLATE_TYPE_NAME_2(std::array, typename T1, get_type_name<T1>(), size_t T2, std::to_string(T2));
+_DBG_TEMPLATE_TYPE_NAME_2(std::pair, typename T1, get_type_name<T1>(), typename T2, get_type_name<T2>());
+_DBG_TEMPLATE_TYPE_NAME_2(std::map, typename T1, get_type_name<T1>(), typename T2, get_type_name<T2>());
+_DBG_TEMPLATE_TYPE_NAME_2(std::multimap, typename T1, get_type_name<T1>(), typename T2, get_type_name<T2>());
+_DBG_TEMPLATE_TYPE_NAME_2(std::unordered_map, typename T1, get_type_name<T1>(), typename T2, get_type_name<T2>());
+_DBG_TEMPLATE_TYPE_NAME_2(std::unordered_multimap, typename T1, get_type_name<T1>(), typename T2, get_type_name<T2>());
 
 template <typename... T>
 std::string type_list_to_string() {
-  std::string result;
-  [[maybe_unused]] auto unused = { (result += get_type_name<T>() + ", ", 0)..., 0 };
-
+  std::string result = (... + (get_type_name<T>() + ", "));
   if constexpr (sizeof...(T) > 0) {
     result.pop_back();
     result.pop_back();
   }
   return result;
 }
-
 template <typename... T>
 std::string type_name(type<std::tuple<T...>>) {
   return "std::tuple<" + type_list_to_string<T...>() + ">";
 }
-
 template <typename... T>
 std::string type_name(type<std::variant<T...>>) {
   return "std::variant<" + type_list_to_string<T...>() + ">";
 }
 
 template <typename T>
-std::string type_name(type<hex<T>>) {
+inline std::string type_name(type<type<T>>) {
   return get_type_name<T>();
 }
 
 template <typename T>
+std::string type_name(type<hex<T>>) {
+  return get_type_name<T>();
+}
+template <typename T>
 std::string type_name(type<oct<T>>) {
   return get_type_name<T>();
 }
-
 template <typename T>
 std::string type_name(type<bin<T>>) {
   return get_type_name<T>();
@@ -955,52 +894,6 @@ std::enable_if_t<!std::is_integral_v<T>, void> print(std::ostream &os, const bin
 }
 }  // namespace printer
 
-class Timer {
- public:
-  Timer() : cost(0) {}
-
-  void start(std::string message = "") {
-    if (message.size()) {
-      helper::get_stream() << printer::location_print("[Timer] ") << printer::message_print(message) << '\n';
-    }
-    start_tp = std::chrono::steady_clock::now();
-  }
-
-  void restart(std::string message = "") {
-    cost = std::chrono::milliseconds(0);
-    start(message);
-  }
-
-  void stop() {
-    auto stop_tp = std::chrono::steady_clock::now();
-    cost += std::chrono::duration_cast<std::chrono::milliseconds>(stop_tp - start_tp);
-  }
-
-  void log(std::string message = "") {
-    helper::get_stream() << printer::location_print("[Timer] ");
-    if (message.size()) {
-      helper::get_stream() << printer::message_print(message) << ' ';
-    }
-    auto secs = std::chrono::duration_cast<std::chrono::seconds>(cost);
-    helper::get_stream() << printer::message_print("elapsed " + std::to_string(secs.count()) + '.' +
-                                                   helper::to_string((cost - secs).count(), 3) + "s\n");
-  }
-
-  static void show() {
-    const auto now = std::chrono::system_clock::now();
-    auto t = std::chrono::system_clock::to_time_t(now);
-    const std::tm *tm = std::localtime(&t);
-    helper::get_stream() << printer::location_print("[Timer] ")
-                         << printer::message_print("current time = " + helper::to_string(tm->tm_hour, 2) + ':' +
-                                                   helper::to_string(tm->tm_min, 2) + ':' +
-                                                   helper::to_string(tm->tm_sec, 2) + '\n');
-  }
-
- private:
-  std::chrono::milliseconds cost;
-  std::chrono::steady_clock::time_point start_tp;
-};
-
 inline std::queue<std::string> &get_exprs() {
   static std::queue<std::string> exprs;
   return exprs;
@@ -1012,15 +905,18 @@ inline std::queue<std::string> &get_types() {
 
 #define exprs get_exprs()
 #define types get_types()
-class debugHelper {
+class Debugger {
  public:
-  debugHelper(const char *file_name, const char *function_name, int line) : os(helper::get_stream()) {
-    std::string file(file_name);
-    if (file.size() > MAX_LENGTH) {
-      file = ".." + file.substr(file.size() - MAX_LENGTH, MAX_LENGTH);
+  Debugger(const std::source_location location = std::source_location::current()) : os_(helper::get_stream()) {
+    std::string file_name(location.file_name());
+    if (file_name.length() > MAX_PATH) {
+      file_name = ".." + file_name.substr(file_name.size() - MAX_PATH, MAX_PATH);
     }
-    location = "[" + file + ":" + std::to_string(line) + " (" + function_name + ")]";
+    location_ = "[" + file_name + ":" + std::to_string(location.line()) + " (" + location.function_name() + ")]";
   }
+
+  Debugger(const Debugger &) = delete;
+  const Debugger &operator=(const Debugger &) = delete;
 
   static void push_expr(const std::string &expr) { exprs.emplace(expr); }
   static void push_type(const std::string &type) { types.emplace(type); }
@@ -1028,25 +924,23 @@ class debugHelper {
   template <typename... Ts>
   void print(Ts &&...values) {
     if constexpr (sizeof...(values) > 0) {
-      os << printer::location_print(location) << " ";
+      os_ << printer::location_print(location_) << " ";
       print_expand(values...);
-    } else {
-      os << printer::message_print(std::string(100, '='));
     }
-    os << '\n';
+    os_ << '\n';
   }
 
  private:
   template <typename Head>
   void print_expand(Head &&head) {
-    os << printer::expression_print(exprs.front()) << " = ";
+    os_ << printer::expression_print(exprs.front()) << " = ";
     exprs.pop();
 
     std::stringstream value;
     printer::print(value, head);
-    os << printer::value_print(value.str());
+    os_ << printer::value_print(value.str());
 
-    os << " (" << printer::type_print(types.front()) << ")";
+    os_ << " (" << printer::type_print(types.front()) << ")";
     types.pop();
   }
 
@@ -1054,7 +948,7 @@ class debugHelper {
   void print_expand(const char (&head)[N]) {
     exprs.pop();
 
-    os << printer::message_print(head);
+    os_ << printer::message_print(head);
 
     types.pop();
   }
@@ -1063,21 +957,21 @@ class debugHelper {
   void print_expand(type<T> head) {
     exprs.pop();
 
-    os << printer::type_print(types.front() + " [sizeof " + std::to_string(sizeof(T)) + "]");
+    os_ << printer::type_print(types.front() + " [sizeof " + std::to_string(sizeof(T)) + "]");
 
     types.pop();
   }
 
   template <typename Head, typename... Tail>
   void print_expand(Head &&head, Tail &&...tail) {
-    os << printer::expression_print(exprs.front()) << " = ";
+    os_ << printer::expression_print(exprs.front()) << " = ";
     exprs.pop();
 
     std::stringstream value;
     printer::print(value, head);
-    os << printer::value_print(value.str());
+    os_ << printer::value_print(value.str());
 
-    os << " (" << printer::type_print(types.front()) << ") ";
+    os_ << " (" << printer::type_print(types.front()) << ") ";
     types.pop();
 
     print_expand(tail...);
@@ -1087,7 +981,7 @@ class debugHelper {
   void print_expand(const char (&head)[N], Tail &&...tail) {
     exprs.pop();
 
-    os << printer::message_print(head) << " ";
+    os_ << printer::message_print(head) << " ";
 
     types.pop();
 
@@ -1098,31 +992,23 @@ class debugHelper {
   void print_expand(type<T> head, Tail &&...tail) {
     exprs.pop();
 
-    os << printer::type_print(types.front() + " [sizeof " + std::to_string(sizeof(T)) + "]") << " ";
+    os_ << printer::type_print(types.front() + " [sizeof " + std::to_string(sizeof(T)) + "]") << " ";
 
     types.pop();
 
     print_expand(tail...);
   }
 
-  std::ostream &os;
-  std::string location;
+  std::ostream &os_;
+  std::string location_;
 
-  static constexpr std::size_t MAX_LENGTH = 20;
+  static constexpr size_t MAX_PATH = 20;
 };
 #undef types
 #undef exprs
 
 }  // namespace dbg
 
-#ifdef SINGLE
-#define LOG(x)                                                      \
-  do {                                                              \
-    dbg::debugHelper::push_expr(static_cast<std::string>(#x));      \
-    dbg::debugHelper::push_type(dbg::get_type_name<decltype(x)>()); \
-    dbg::debugHelper(__FILE__, __func__, __LINE__).print(x);        \
-  } while (false)
-#else
 #define DBG_PARENS ()
 #define DBG_EXPAND(arg) DBG_EXPAND1(DBG_EXPAND1(DBG_EXPAND1(DBG_EXPAND1(arg))))
 #define DBG_EXPAND1(arg) DBG_EXPAND2(DBG_EXPAND2(DBG_EXPAND2(DBG_EXPAND2(arg))))
@@ -1133,17 +1019,15 @@ class debugHelper {
 #define DBG_FOR_EACH_HELPER(func, a1, ...) func(a1) __VA_OPT__(DBG_FOR_EACH_AGAIN DBG_PARENS(func, __VA_ARGS__))
 #define DBG_FOR_EACH_AGAIN() DBG_FOR_EACH_HELPER
 
-#define DBG_SAVE_EXPR(x) dbg::debugHelper::push_expr(static_cast<std::string>(#x));
-#define DBG_SAVE_TYPE(x) dbg::debugHelper::push_type(dbg::get_type_name<decltype(x)>());
+#define DBG_SAVE_EXPR(x) dbg::Debugger::push_expr(static_cast<std::string>(#x));
+#define DBG_SAVE_TYPE(x) dbg::Debugger::push_type(dbg::get_type_name<decltype(x)>());
 
-#define LOG(...)                                                       \
-  do {                                                                 \
-    DBG_FOR_EACH(DBG_SAVE_EXPR, __VA_ARGS__)                           \
-    DBG_FOR_EACH(DBG_SAVE_TYPE, __VA_ARGS__)                           \
-    dbg::debugHelper(__FILE__, __func__, __LINE__).print(__VA_ARGS__); \
+#define DBG(...)                             \
+  do {                                       \
+    DBG_FOR_EACH(DBG_SAVE_EXPR, __VA_ARGS__) \
+    DBG_FOR_EACH(DBG_SAVE_TYPE, __VA_ARGS__) \
+    dbg::Debugger().print(__VA_ARGS__);      \
   } while (false)
-
-#endif
 
 #define TYPE(x) dbg::type<decltype(x)>()
 

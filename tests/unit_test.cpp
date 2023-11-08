@@ -3,66 +3,34 @@
 
 #include "dbg.h"
 
-TEST_CASE("Timer", "[timer]") {
-  dbg::Timer::show();
-
-  dbg::Timer timer;
-  timer.start("start for loop");
-  int sum = 0;
-  for (int i = 1; i < 100000000; i++) {
-    sum += rand() % i;
-  }
-  timer.stop();
-  timer.log("for loop");
-
-  SECTION("restart") {
-    timer.restart("restart for loop");
-    for (int i = 1; i < 10000000; i++) {
-      sum += rand() % i;
-    }
-    timer.stop();
-    timer.log("for loop");
-  }
-  SECTION("continue") {
-    timer.start("start for loop");
-    for (int i = 1; i < 10000000; i++) {
-      sum += rand() % i;
-    }
-    timer.stop();
-    timer.log("for loop");
-  }
-
-  dbg::Timer::show();
-}
-
 TEST_CASE("message") {
   SECTION("single message") {
-    LOG("test for const char*");
-    LOG("this is a message");
-    LOG("attention!");
-    LOG("");
+    DBG("test for const char*");
+    DBG("this is a message");
+    DBG("attention!");
+    DBG("");
   }
 
-  SECTION("multi message") { LOG("1", " 2", " 3"); }
+  SECTION("multi message") { DBG("1", " 2", " 3"); }
 }
 
 TEST_CASE("primitive type", "[type]") {
   SECTION("literal") {
-    LOG(1);
-    LOG(1.0);
-    LOG(2.0F);
-    LOG('O');
-    LOG(100L);
-    LOG(128LL);
-    LOG("str");
-    LOG(1 + 2);
-    LOG(1 * 2.0);
-    LOG('a' + 3);
-    LOG(0U);
-    LOG(true);
-    LOG(sizeof(int));
-    LOG(0.0L);
-    LOG(__cplusplus);
+    DBG(1);
+    DBG(1.0);
+    DBG(2.0F);
+    DBG('O');
+    DBG(100L);
+    DBG(128LL);
+    DBG("str");
+    DBG(1 + 2);
+    DBG(1 * 2.0);
+    DBG('a' + 3);
+    DBG(0U);
+    DBG(true);
+    DBG(sizeof(int));
+    DBG(0.0L);
+    DBG(__cplusplus);
   }
   short i16 = 2;
   int i32 = 1;
@@ -78,23 +46,23 @@ TEST_CASE("primitive type", "[type]") {
   double f64 = 1.2;
   long double lf64 = 1.23L;
   SECTION("primitive type") {
-    LOG(i16);
-    LOG(i32);
-    LOG(i8);
-    LOG(si8);
-    LOG(ui16);
-    LOG(ui8);
-    LOG(li);
-    LOG(lli);
-    LOG(mx);
-    LOG(boolean);
-    LOG(f32);
-    LOG(f64);
-    LOG(lf64);
+    DBG(i16);
+    DBG(i32);
+    DBG(i8);
+    DBG(si8);
+    DBG(ui16);
+    DBG(ui8);
+    DBG(li);
+    DBG(lli);
+    DBG(mx);
+    DBG(boolean);
+    DBG(f32);
+    DBG(f64);
+    DBG(lf64);
     long zz = 12312321;
     long double ldb = 0.000012313;
-    LOG(zz);
-    LOG(ldb);
+    DBG(zz);
+    DBG(ldb);
   }
   SECTION("left reference") {
     short &ri16 = i16;
@@ -107,16 +75,16 @@ TEST_CASE("primitive type", "[type]") {
     long long &rlli = lli;
     uint64_t &rmx = mx;
     bool &rboolean = boolean;
-    LOG(ri16);
-    LOG(ri32);
-    LOG(ri8);
-    LOG(rsi8);
-    LOG(rui16);
-    LOG(rui8);
-    LOG(rli);
-    LOG(rlli);
-    LOG(rmx);
-    LOG(rboolean);
+    DBG(ri16);
+    DBG(ri32);
+    DBG(ri8);
+    DBG(rsi8);
+    DBG(rui16);
+    DBG(rui8);
+    DBG(rli);
+    DBG(rlli);
+    DBG(rmx);
+    DBG(rboolean);
   }
   SECTION("pointer") {
     short *pi16 = &i16;
@@ -129,39 +97,39 @@ TEST_CASE("primitive type", "[type]") {
     long long *plli = &lli;
     uint64_t *pmx = &mx;
     bool *pboolean = &boolean;
-    LOG(pi16);
-    LOG(pi32);
-    LOG(pi8);
-    LOG(psi8);
-    LOG(pui16);
-    LOG(pui8);
-    LOG(pli);
-    LOG(plli);
-    LOG(pmx);
-    LOG(pboolean);
+    DBG(pi16);
+    DBG(pi32);
+    DBG(pi8);
+    DBG(psi8);
+    DBG(pui16);
+    DBG(pui8);
+    DBG(pli);
+    DBG(plli);
+    DBG(pmx);
+    DBG(pboolean);
     int *null = nullptr;
-    LOG(null);
-    LOG(nullptr);
+    DBG(null);
+    DBG(nullptr);
   }
   SECTION("right reference") {
     int &&i = 123;
     std::string &&str = "nonesence";
     short &&j = 1;
-    LOG(i);
-    LOG(str);
-    LOG(j);
+    DBG(i);
+    DBG(str);
+    DBG(j);
     std::string rvalue = "hello world";
-    LOG(std::move(rvalue));
+    DBG(std::move(rvalue));
   }
   SECTION("unvisible char") {
     int8_t byte = 202;
     char invisible = '\x00';  // static_cast<char>(130);
     char &lchar = invisible;
     const char *invisible_str = "\x80\x81\x82\x83\x90";
-    LOG(byte);
-    LOG(invisible);
-    LOG(lchar);
-    LOG(invisible_str);
+    DBG(byte);
+    DBG(invisible);
+    DBG(lchar);
+    DBG(invisible_str);
   }
   SECTION("const/volatile") {
     const int *ee = nullptr;
@@ -170,80 +138,80 @@ TEST_CASE("primitive type", "[type]") {
     const char str_arr[] = "world";  // equal to "world"
     volatile long long z = -23;
     const volatile float bbb = 1.034F;
-    LOG(ee);
-    LOG(eee);
-    LOG(str);
-    LOG(str_arr);
-    LOG(z);
-    LOG(bbb);
+    DBG(ee);
+    DBG(eee);
+    DBG(str);
+    DBG(str_arr);
+    DBG(z);
+    DBG(bbb);
   }
   SECTION("string") {
     std::string strstr = "str";
     const char *ccccc = "meme";
-    LOG(strstr);
-    LOG(ccccc);
+    DBG(strstr);
+    DBG(ccccc);
     std::string rowstr = R"(\\...*\\)";
-    LOG(rowstr);
+    DBG(rowstr);
   }
 }
 
 TEST_CASE("special STL container", "[STL][container]") {
   SECTION("pair") {
     std::pair<int, long> P{ 1, 2l };
-    LOG(P);
+    DBG(P);
   }
   SECTION("tuple") {
     std::tuple<int, char, int8_t, char> tp4s{ 109, '\x23', 126, '\x0' };
-    LOG(tp4s);
+    DBG(tp4s);
   }
   SECTION("queue") {
     std::queue<short> q;
     q.push(1);
     q.push(20);
-    LOG(q);
+    DBG(q);
   }
   SECTION("array") {
     std::array<unsigned long long, 4> arr{ 1, 10, 99, 87 };
-    LOG(arr);
+    DBG(arr);
   }
   SECTION("string view") {
     std::string_view sv("123Yio");
-    LOG(sv);
-    LOG(std::string_view{ "test" });
-    LOG(std::string_view("tmp", 3));
+    DBG(sv);
+    DBG(std::string_view{ "test" });
+    DBG(std::string_view("tmp", 3));
   }
   SECTION("deque") {
     std::deque<long> dq;
     dq.push_front(1);
     dq.push_back(-2);
-    LOG(dq);
+    DBG(dq);
   }
   SECTION("stack") {
     std::stack<uint64_t> stk;
     stk.push(0);
     stk.push(999);
-    LOG(stk);
+    DBG(stk);
   }
   SECTION("optional") {
-    LOG(std::make_optional<bool>(false));
-    LOG(std::make_optional<std::string>("tmporal"));
-    LOG(std::nullopt);
+    DBG(std::make_optional<bool>(false));
+    DBG(std::make_optional<std::string>("tmporal"));
+    DBG(std::nullopt);
     std::optional<int> opt = std::nullopt;
-    LOG(opt);
+    DBG(opt);
   }
   SECTION("variant") {
     std::variant<int, std::string> state;
     state = 12;
-    LOG(state);
+    DBG(state);
     state = "hello";
-    LOG(state);
+    DBG(state);
     std::variant<int, float> v;
     v = 12;
-    LOG(v);
+    DBG(v);
   }
   SECTION("any") {
     std::any wild = 10.10L;
-    LOG(std::any_cast<long double>(wild));
+    DBG(std::any_cast<long double>(wild));
   }
 }
 
@@ -253,14 +221,14 @@ TEST_CASE("variadic argument", "[variadic]") {
   short c = 30;
   char d = 'O';
   double e = 10.f;
-  LOG();  // empty -> split line
-  LOG(a, (b), (c), d, e);
+  DBG();  // empty -> split line
+  DBG(a, (b), (c), d, e);
   int tmparr[] = { 1, 2, 3 };
   std::initializer_list tmplist = { 0, 9, -1, 2 };
-  LOG(tmparr, tmplist);
-  // LOG({1, 2, 3}, {0, 9, -1, 2}); // ! NOTICE
-  LOG((std::initializer_list{ 1, 2, 3 }), (std::initializer_list{ 0, 9, -1, 2 }));
-  LOG("first:", a, "second:", b, "third:", c);
+  DBG(tmparr, tmplist);
+  // DBG({1, 2, 3}, {0, 9, -1, 2}); // ! NOTICE
+  DBG((std::initializer_list{ 1, 2, 3 }), (std::initializer_list{ 0, 9, -1, 2 }));
+  DBG("first:", a, "second:", b, "third:", c);
 }
 #endif
 
@@ -268,91 +236,91 @@ TEST_CASE("base output", "[base]") {
   char value = 110;
   short neg = -12;
   SECTION("hex") {
-    LOG(dbg::hex(value));
-    LOG(dbg::hex(neg));
-    LOG(dbg::hex(-neg));
+    DBG(dbg::hex(value));
+    DBG(dbg::hex(neg));
+    DBG(dbg::hex(-neg));
   }
   SECTION("bin") {
-    LOG(dbg::bin(value));
-    LOG(dbg::bin(neg));
-    LOG(dbg::bin(-neg));
+    DBG(dbg::bin(value));
+    DBG(dbg::bin(neg));
+    DBG(dbg::bin(-neg));
   }
   SECTION("oct") {
-    LOG(dbg::oct(value));
-    LOG(dbg::oct(neg));
+    DBG(dbg::oct(value));
+    DBG(dbg::oct(neg));
   }
   SECTION("none integral") {
     std::string str = "123";
-    LOG(dbg::hex(str));
-    LOG(dbg::bin("12"));
-    LOG(dbg::oct('3'));
+    DBG(dbg::hex(str));
+    DBG(dbg::bin("12"));
+    DBG(dbg::oct('3'));
   }
 }
 
 TEST_CASE("container", "[container]") {
   SECTION("vector") {
     std::vector<int> vec{ 1, 2, 3 };
-    LOG(vec);
+    DBG(vec);
     const std::vector<int> cvec{ 1, 2, 3 };
-    LOG(cvec);
+    DBG(cvec);
     std::vector<long> empty_vec{};
-    LOG(empty_vec);
+    DBG(empty_vec);
     std::vector<char> vec_chars{ 'h', 'e', 'l', 'l', 'o', '\x00', '\xFE' };
-    LOG(vec_chars);
-    LOG(std::move(std::vector<int>{ 0, 1, 0, 1 }));
+    DBG(vec_chars);
+    DBG(std::move(std::vector<int>{ 0, 1, 0, 1 }));
     std::vector<std::vector<int>> vec_of_vec_of_ints{ { 1, 2 }, { 3, 4, 5 } };
-    LOG(vec_of_vec_of_ints);
+    DBG(vec_of_vec_of_ints);
     std::vector<std::vector<std::vector<int>>> vec_of_vec_of_vec_of_ints{ { { 1, 2 }, { 3, 4, 5 } }, { { 3 } } };
-    LOG(vec_of_vec_of_vec_of_ints);
+    DBG(vec_of_vec_of_vec_of_ints);
   }
   SECTION("array") {
     const std::array<int, 2> dummy_array{ { 0, 4 } };
-    LOG(dummy_array);
+    DBG(dummy_array);
     int dummy_int_array[] = { 11, 22, 33 };
-    LOG(dummy_int_array);
+    DBG(dummy_int_array);
     int longarr[] = { 1, 0, -9, 5, 6, 8, 10, 12, 3, 4, 5, 11, 999 };
-    LOG(longarr);
+    DBG(longarr);
     int multi_demension[4][2] = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } };
-    LOG(multi_demension);
+    DBG(multi_demension);
   }
   SECTION("list") {
     const std::list<int> dummy_list{ 1, 2, 3, 4, 5, 6, 7, 8, 9 };
-    LOG(dummy_list);
+    DBG(dummy_list);
   }
   SECTION("initializer_list") {
-    LOG((std::initializer_list{ "10", "20", "66" }));
+    DBG((std::initializer_list{ "10", "20", "66" }));
     std::string a = "12", b = "22";
-    LOG((std::initializer_list<std::string>{ a, b, "32" }));
+    DBG((std::initializer_list<std::string>{ a, b, "32" }));
   }
   SECTION("set") {
     std::set<int> st{ 0, 1, 2, 3, 4, 5, 6 };
-    LOG(st);
+    DBG(st);
     std::set<std::string> st2;
-    LOG(st2);
+    DBG(st2);
   }
   SECTION("multiset") {
     std::multiset<int64_t> mst{ 0L, 1L, -1L, -1L, 0L, 5L, 5L };
-    LOG(mst);
+    DBG(mst);
   }
   SECTION("unordered_set") {
     std::unordered_set<int> ust{ 0, 1, 2, 3, 4, 5, 6 };
-    LOG(ust);
+    DBG(ust);
     std::unordered_set<std::string> ust2;
-    LOG(ust2);
+    DBG(ust2);
   }
   SECTION("map") {
     std::map<int, std::string> index{ { 0, "00" }, { 1, "11" }, { 2, "22" } };
-    LOG(index);
+    DBG(index);
     std::map<std::string, int> mp;
-    LOG(mp);
+    DBG(mp);
   }
   SECTION("multimap") {
     std::multimap<int, std::string> multi_index{ { 0, "00" }, { 0, "0" }, { 1, "1" }, { 1, "11" }, { 2, "22" } };
-    LOG(multi_index);
+    DBG(multi_index);
   }
   SECTION("unordered_map") {
     std::unordered_map<std::string, int> ump;
-    LOG(ump);
+    DBG(ump);
   }
 }
 
@@ -363,30 +331,30 @@ union gb_union {
 TEST_CASE("union") {
   gb_union gb;
   gb.x = 2;
-  LOG(TYPE(gb));
-  LOG(gb.x);
+  DBG(TYPE(gb));
+  DBG(gb.x);
   union data {
     int n;
     char ch;
     double f;
   } ud;
   ud.f = 1.23;
-  LOG(ud.f);
+  DBG(ud.f);
   // dbg(ud); // ! cann't know the value
-  LOG(TYPE(ud));
+  DBG(TYPE(ud));
 }
 
 enum gb_enum { bad, ok };
 TEST_CASE("enum") {
-  LOG(bad);
-  LOG(ok);
+  DBG(bad);
+  DBG(ok);
   gb_enum g = bad;
-  LOG(g);
+  DBG(g);
   enum class color : char { RED = 1, BLUE = 2 };
   color c = color::RED;
-  LOG(c);
-  LOG(color::RED);
-  LOG(color::BLUE);
+  DBG(c);
+  DBG(color::RED);
+  DBG(color::BLUE);
 }
 
 struct gb_struct {
@@ -421,23 +389,23 @@ TEST_CASE("aggregate") {
     int a, b;
   };
   POD pod{ 1, 2 };
-  LOG(pod.a);
-  LOG(pod.b);
-  LOG(pod);
+  DBG(pod.a);
+  DBG(pod.b);
+  DBG(pod);
   gb_struct gs{ 1, 2, 3, 4 };
-  LOG(gs);
+  DBG(gs);
   gb_class_private gcp;
-  LOG(gcp);
-  LOG(std::is_aggregate_v<gb_class_private>);
+  DBG(gcp);
+  DBG(std::is_aggregate_v<gb_class_private>);
   gb_class gc{ 166 };
-  LOG(gc);
-  LOG(std::is_aggregate_v<gb_class>);
+  DBG(gc);
+  DBG(std::is_aggregate_v<gb_class>);
   none no;
-  LOG(no);
+  DBG(no);
   single sg;
-  LOG(sg);
-  LOG(A());
-  LOG(nps::B());
+  DBG(sg);
+  DBG(A());
+  DBG(nps::B());
   struct complex_data {
     std::vector<int> vec;
     struct inner {
@@ -449,33 +417,33 @@ TEST_CASE("aggregate") {
     char ch;
     std::string name;
   };
-  LOG(dbg::flatten::unique_counter_impl<complex_data>());
+  DBG(dbg::flatten::unique_counter_impl<complex_data>());
   int tmp = 6;
   complex_data cd = { { 1, 2, 3 }, { 6, 6.6 }, &tmp, "complex", 'P', "Alex" };
-  LOG(cd);
+  DBG(cd);
 }
 
 TEST_CASE("miscellaneous") {
   int x = 1;
-  LOG(++x);
+  DBG(++x);
   REQUIRE(x == 2);
 
   std::unique_ptr<int> uq_ptr = std::make_unique<int>(123);
-  LOG(uq_ptr);
+  DBG(uq_ptr);
   std::shared_ptr<long> sh_ptr = std::make_shared<long>(29);
-  LOG(sh_ptr);
+  DBG(sh_ptr);
   struct sp {
     int a[2] = { 0, 1 };
     int b = 6;
     int c[4] = { -1, 1, 2, -2 };
   };
   sp sp_obj;
-  LOG(sp_obj);
+  DBG(sp_obj);
   int arr[2] = { -1, 1 };
   int(&brr)[2] = arr;
-  LOG(brr);
+  DBG(brr);
   std::bitset<12> bit(1209);
-  LOG(bit);
+  DBG(bit);
   struct nest {
     struct inner {
       int a, b;
@@ -493,11 +461,11 @@ TEST_CASE("miscellaneous") {
     tao t;
   };
   nest nst{ { 1, 2 }, 5 };
-  LOG(nst);
+  DBG(nst);
   struct big {
     int a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q;
   };
-  LOG(big());
+  DBG(big());
   struct outer {
     struct inner {
       int a, b;
@@ -505,5 +473,5 @@ TEST_CASE("miscellaneous") {
     int c;
   };
   outer o = { { 1, 2 }, 3 };
-  LOG(o);
+  DBG(o);
 }
