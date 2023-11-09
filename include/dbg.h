@@ -1,9 +1,7 @@
-#ifndef DBG_TOOLS_DBG_H
-#define DBG_TOOLS_DBG_H
+#pragma once
 
 #include <unistd.h>
 
-#include <algorithm>
 #include <bitset>
 #include <cstring>
 #include <forward_list>
@@ -489,7 +487,7 @@ constexpr auto flatten_impl(const T &t, std::integral_constant<std::size_t, 16> 
 // end auto generate code
 template <typename T, std::size_t N>
 constexpr auto flatten_impl(const T &t, std::integral_constant<std::size_t, N> N1) noexcept {
-  config::get_stream() << printer::error_print("please rerun generate.py to gen more binds! ");
+  config::get_stream() << printer::error_print("Please rerun utils/generate.py to generate more binds!");
   return std::forward_as_tuple();
 }
 
@@ -557,9 +555,9 @@ inline void print(std::ostream &os, unsigned char *const &value);
 template <typename T>
 void print(std::ostream &os, const std::optional<T> &value);
 template <typename T, typename Deleter>
-void print(std::ostream &os, std::unique_ptr<T, Deleter> &value);
+void print(std::ostream &os, const std::unique_ptr<T, Deleter> &value);
 template <typename T>
-void print(std::ostream &os, std::shared_ptr<T> &value);
+void print(std::ostream &os, const std::shared_ptr<T> &value);
 template <typename... Ts>
 void print(std::ostream &os, const std::variant<Ts...> &value);
 template <typename T>
@@ -706,12 +704,12 @@ void print(std::ostream &os, const std::optional<T> &value) {
 }
 
 template <typename T, typename Deleter>
-void print(std::ostream &os, std::unique_ptr<T, Deleter> &value) {
+void print(std::ostream &os, const std::unique_ptr<T, Deleter> &value) {
   print(os, value.get());
 }
 
 template <typename T>
-void print(std::ostream &os, std::shared_ptr<T> &value) {
+void print(std::ostream &os, const std::shared_ptr<T> &value) {
   print(os, value.get());
   os << " (use_count = " << value.use_count() << ")";
 }
@@ -805,140 +803,50 @@ void print(std::ostream &os, const base<T, N> &value) {
 }
 }  // namespace printer
 
-inline std::queue<std::string> &get_exprs() {
-  static std::queue<std::string> exprs;
-  return exprs;
-}
-inline std::queue<std::string> &get_types() {
-  static std::queue<std::string> types;
-  return types;
-}
-
-#define exprs get_exprs()
-#define types get_types()
 class Debugger {
  public:
-  Debugger(const std::source_location location = std::source_location::current()) : os_(config::get_stream()) {
-    std::string file_name(location.file_name());
+  Debugger(const char *file, int line, const char *func) : os_(config::get_stream()) {
+    std::string file_name(file);
     if (file_name.length() > MAX_PATH) {
       file_name = ".." + file_name.substr(file_name.size() - MAX_PATH, MAX_PATH);
     }
-    location_ = "[" + file_name + ":" + std::to_string(location.line()) + " (" + location.function_name() + ")]";
+    location_ = '[' + file_name + ':' + std::to_string(line) + " (" + func + ")]";
   }
 
   Debugger(const Debugger &) = delete;
   const Debugger &operator=(const Debugger &) = delete;
 
-  static void push_expr(const std::string &expr) { exprs.emplace(expr); }
-  static void push_type(const std::string &type) { types.emplace(type); }
-
-  template <typename... Ts>
-  void print(Ts &&...values) {
-    if constexpr (sizeof...(values) > 0) {
-      os_ << printer::location_print(location_) << " ";
-      print_expand(values...);
-    }
-    os_ << '\n';
+  void print() { os_ << printer::location_print(location_) << "\n"; }
+  template <typename T>
+  T &&print(const std::string &expr, const std::string &type_name, T &&value) {
+    os_ << printer::location_print(location_) << ' ';
+    os_ << printer::expression_print(expr) << " = ";
+    std::stringstream ss;
+    printer::print(ss, value);
+    os_ << printer::value_print(ss.str());
+    os_ << " (" << printer::type_print(type_name) << ")\n";
+    return std::forward<T>(value);
+  }
+  template <size_t N>
+  auto print(const std::string &, const std::string &, const char (&value)[N]) -> decltype(value) {
+    os_ << printer::location_print(location_) << ' ';
+    os_ << printer::message_print(value) << '\n';
+    return value;
+  }
+  template <typename T>
+  type<T> &&print(const std::string &, const std::string &type_name, type<T> &&value) {
+    os_ << printer::location_print(location_) << ' ';
+    os_ << printer::type_print(type_name + " [sizeof " + std::to_string(sizeof(T)) + "]") << '\n';
+    return std::forward<type<T>>(value);
   }
 
  private:
-  template <typename Head>
-  void print_expand(Head &&head) {
-    os_ << printer::expression_print(exprs.front()) << " = ";
-    exprs.pop();
-
-    std::stringstream value;
-    printer::print(value, head);
-    os_ << printer::value_print(value.str());
-
-    os_ << " (" << printer::type_print(types.front()) << ")";
-    types.pop();
-  }
-
-  template <std::size_t N>
-  void print_expand(const char (&head)[N]) {
-    exprs.pop();
-
-    os_ << printer::message_print(head);
-
-    types.pop();
-  }
-
-  template <typename T>
-  void print_expand(type<T> head) {
-    exprs.pop();
-
-    os_ << printer::type_print(types.front() + " [sizeof " + std::to_string(sizeof(T)) + "]");
-
-    types.pop();
-  }
-
-  template <typename Head, typename... Tail>
-  void print_expand(Head &&head, Tail &&...tail) {
-    os_ << printer::expression_print(exprs.front()) << " = ";
-    exprs.pop();
-
-    std::stringstream value;
-    printer::print(value, head);
-    os_ << printer::value_print(value.str());
-
-    os_ << " (" << printer::type_print(types.front()) << ") ";
-    types.pop();
-
-    print_expand(tail...);
-  }
-
-  template <std::size_t N, typename... Tail>
-  void print_expand(const char (&head)[N], Tail &&...tail) {
-    exprs.pop();
-
-    os_ << printer::message_print(head) << " ";
-
-    types.pop();
-
-    print_expand(tail...);
-  }
-
-  template <typename T, typename... Tail>
-  void print_expand(type<T> head, Tail &&...tail) {
-    exprs.pop();
-
-    os_ << printer::type_print(types.front() + " [sizeof " + std::to_string(sizeof(T)) + "]") << " ";
-
-    types.pop();
-
-    print_expand(tail...);
-  }
-
   std::ostream &os_;
   std::string location_;
 
   static constexpr size_t MAX_PATH = 20;
 };
-#undef types
-#undef exprs
 }  // namespace dbg
 
-#define DBG_PARENS ()
-#define DBG_EXPAND(arg) DBG_EXPAND1(DBG_EXPAND1(DBG_EXPAND1(DBG_EXPAND1(arg))))
-#define DBG_EXPAND1(arg) DBG_EXPAND2(DBG_EXPAND2(DBG_EXPAND2(DBG_EXPAND2(arg))))
-#define DBG_EXPAND2(arg) DBG_EXPAND3(DBG_EXPAND3(DBG_EXPAND3(DBG_EXPAND3(arg))))
-#define DBG_EXPAND3(arg) DBG_EXPAND4(DBG_EXPAND4(DBG_EXPAND4(DBG_EXPAND4(arg))))
-#define DBG_EXPAND4(arg) arg
-#define DBG_FOR_EACH(func, ...) __VA_OPT__(DBG_EXPAND(DBG_FOR_EACH_HELPER(func, __VA_ARGS__)))
-#define DBG_FOR_EACH_HELPER(func, a1, ...) func(a1) __VA_OPT__(DBG_FOR_EACH_AGAIN DBG_PARENS(func, __VA_ARGS__))
-#define DBG_FOR_EACH_AGAIN() DBG_FOR_EACH_HELPER
-
-#define DBG_SAVE_EXPR(x) dbg::Debugger::push_expr(static_cast<std::string>(#x));
-#define DBG_SAVE_TYPE(x) dbg::Debugger::push_type(dbg::get_type_name<decltype(x)>());
-
-#define DBG(...)                             \
-  do {                                       \
-    DBG_FOR_EACH(DBG_SAVE_EXPR, __VA_ARGS__) \
-    DBG_FOR_EACH(DBG_SAVE_TYPE, __VA_ARGS__) \
-    dbg::Debugger().print(__VA_ARGS__);      \
-  } while (false)
-
-#define TYPE(x) dbg::type<decltype(x)>()
-
-#endif  // DBG_TOOLS_DBG_H
+#define DBG(x) \
+  dbg::Debugger(__FILE__, __LINE__, __func__).print(static_cast<std::string>(#x), dbg::get_type_name<decltype(x)>(), x)

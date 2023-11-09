@@ -11,7 +11,11 @@ TEST_CASE("message") {
     DBG("");
   }
 
-  SECTION("multi message") { DBG("1", " 2", " 3"); }
+  SECTION("multi message") {
+    DBG("1");
+    DBG("2");
+    DBG("3");
+  }
 }
 
 TEST_CASE("primitive type", "[type]") {
@@ -136,14 +140,10 @@ TEST_CASE("primitive type", "[type]") {
     const int *eee = &i32;
     const char *str = "hello";
     const char str_arr[] = "world";  // equal to "world"
-    volatile long long z = -23;
-    const volatile float bbb = 1.034F;
     DBG(ee);
     DBG(eee);
     DBG(str);
     DBG(str_arr);
-    DBG(z);
-    DBG(bbb);
   }
   SECTION("string") {
     std::string strstr = "str";
@@ -231,22 +231,31 @@ TEST_CASE("special STL container", "[STL][container]") {
   }
 }
 
-#ifndef SINGLE
 TEST_CASE("variadic argument", "[variadic]") {
   int a = 1, b = 2;
   short c = 30;
   char d = 'O';
   double e = 10.f;
-  DBG();  // empty -> split line
-  DBG(a, (b), (c), d, e);
+  // DBG();
+  DBG(a);
+  DBG(b);
+  DBG(c);
+  DBG(d);
+  DBG(e);
   int tmparr[] = { 1, 2, 3 };
   std::initializer_list tmplist = { 0, 9, -1, 2 };
-  DBG(tmparr, tmplist);
+  DBG(tmparr);
+  DBG(tmplist);
   // DBG({1, 2, 3}, {0, 9, -1, 2}); // ! NOTICE
-  DBG((std::initializer_list{ 1, 2, 3 }), (std::initializer_list{ 0, 9, -1, 2 }));
-  DBG("first:", a, "second:", b, "third:", c);
+  DBG((std::initializer_list{ 1, 2, 3 }));
+  DBG((std::initializer_list{ 0, 9, -1, 2 }));
+  DBG("first:");
+  DBG(a);
+  DBG("second:");
+  DBG(b);
+  DBG("third:");
+  DBG(c);
 }
-#endif
 
 TEST_CASE("base output", "[base]") {
   char value = 110;
@@ -341,7 +350,7 @@ union gb_union {
 TEST_CASE("union") {
   gb_union gb;
   gb.x = 2;
-  DBG(TYPE(gb));
+  DBG(dbg::type<decltype(gb)>());
   DBG(gb.x);
   union data {
     int n;
@@ -351,7 +360,7 @@ TEST_CASE("union") {
   ud.f = 1.23;
   DBG(ud.f);
   // dbg(ud); // ! cann't know the value
-  DBG(TYPE(ud));
+  DBG(dbg::type<decltype(ud)>());
 }
 
 enum gb_enum { bad, ok };

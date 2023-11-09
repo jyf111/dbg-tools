@@ -18,9 +18,11 @@ int main() {
   int &ref = a;
   long &&rref = 4l;
   data d{ 1, 2, 3, "hello", { 6, 0, 8 } };
-  DBG(a, b, x);
-  DBG(d);
-  DBG(ref, rref);
+  DBG(a);
+  DBG(b);
+  DBG(x);
+  DBG(ref);
+  DBG(rref);
   std::deque<int> dq{ 1, 2 };
   DBG(dq);
   DBG((std::vector<int>{ 1, 2 }));
@@ -45,5 +47,16 @@ int main() {
   uint8_t ttt = 1;
   DBG(ttt);
   DBG(true);
+  DBG(dbg::type<char[2][3][4]>());
+  // DBG();
+  DBG("This is a message");
+  DBG(std::string("This is a string"));
+  const char *msg = "MMMM";
+  DBG(msg);
+  const char *xxxx[] = { "111", "222", "333" };
+  DBG(xxxx);
+  int y = DBG(x) + 2;
+  const int32_t A = 2;
+  const int32_t B = DBG(3 * A) + 1;
   return 0;
 }
