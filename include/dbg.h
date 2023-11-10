@@ -1,7 +1,5 @@
 #pragma once
 
-#include <unistd.h>
-
 #include <bitset>
 #include <cstring>
 #include <forward_list>
@@ -45,7 +43,7 @@ inline bool color_print(const std::ostream &os) {
 namespace config {
 struct Option {
   std::ostream *os = nullptr;  // defer the init
-  size_t CONTAINER_LENGTH = 10;
+  size_t CONTAINER_LENGTH = 20;
   std::string LOCATION_COLOR = "\033[02m";    // gray
   std::string EXPRESSION_COLOR = "\033[36m";  // cyan
   std::string VALUE_COLOR = "\033[37m";       // white
@@ -816,27 +814,28 @@ class Debugger {
   Debugger(const Debugger &) = delete;
   const Debugger &operator=(const Debugger &) = delete;
 
-  void print() { os_ << printer::location_print(location_) << "\n"; }
+  void print() { os_ << (printer::location_print(location_) + '\n'); }
   template <typename T>
   T &&print(const std::string &expr, const std::string &type_name, T &&value) {
-    os_ << printer::location_print(location_) << ' ';
-    os_ << printer::expression_print(expr) << " = ";
     std::stringstream ss;
-    printer::print(ss, value);
-    os_ << printer::value_print(ss.str());
-    os_ << " (" << printer::type_print(type_name) << ")\n";
+    ss << printer::location_print(location_) << ' ';
+    ss << printer::expression_print(expr) << " = ";
+    std::stringstream ss2;
+    printer::print(ss2, value);
+    ss << printer::value_print(ss2.str());
+    ss << " (" << printer::type_print(type_name) << ")\n";
+    os_ << ss.str();
     return std::forward<T>(value);
   }
   template <size_t N>
   auto print(const std::string &, const std::string &, const char (&value)[N]) -> decltype(value) {
-    os_ << printer::location_print(location_) << ' ';
-    os_ << printer::message_print(value) << '\n';
+    os_ << (printer::location_print(location_) + ' ' + printer::message_print(value) + '\n');
     return value;
   }
   template <typename T>
   type<T> &&print(const std::string &, const std::string &type_name, type<T> &&value) {
-    os_ << printer::location_print(location_) << ' ';
-    os_ << printer::type_print(type_name + " [sizeof " + std::to_string(sizeof(T)) + "]") << '\n';
+    os_ << (printer::location_print(location_) + ' ' +
+            printer::type_print(type_name + " [sizeof " + std::to_string(sizeof(T)) + "]") + '\n');
     return std::forward<type<T>>(value);
   }
 
@@ -848,5 +847,52 @@ class Debugger {
 };
 }  // namespace dbg
 
+// begin generated code by utils/gen_macro.py 16
+#define _DBG_CONCAT(x, y) x##y
+#define _DBG_CONCAT_HELPER(x, y) _DBG_CONCAT(x, y)
+#define _DBG_GET_NTH_ARG(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, N, ...) N
+#define _DBG_COUNT_ARGS(...) _DBG_GET_NTH_ARG(__VA_ARGS__, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+#define _DBG_APPLY_F0(f)
+#define _DBG_APPLY_F1(f, _1) f(_1)
+#define _DBG_APPLY_F2(f, _1, ...) f(_1) _DBG_APPLY_F1(f, __VA_ARGS__)
+#define _DBG_APPLY_F3(f, _1, ...) f(_1) _DBG_APPLY_F2(f, __VA_ARGS__)
+#define _DBG_APPLY_F4(f, _1, ...) f(_1) _DBG_APPLY_F3(f, __VA_ARGS__)
+#define _DBG_APPLY_F5(f, _1, ...) f(_1) _DBG_APPLY_F4(f, __VA_ARGS__)
+#define _DBG_APPLY_F6(f, _1, ...) f(_1) _DBG_APPLY_F5(f, __VA_ARGS__)
+#define _DBG_APPLY_F7(f, _1, ...) f(_1) _DBG_APPLY_F6(f, __VA_ARGS__)
+#define _DBG_APPLY_F8(f, _1, ...) f(_1) _DBG_APPLY_F7(f, __VA_ARGS__)
+#define _DBG_APPLY_F9(f, _1, ...) f(_1) _DBG_APPLY_F8(f, __VA_ARGS__)
+#define _DBG_APPLY_F10(f, _1, ...) f(_1) _DBG_APPLY_F9(f, __VA_ARGS__)
+#define _DBG_APPLY_F11(f, _1, ...) f(_1) _DBG_APPLY_F10(f, __VA_ARGS__)
+#define _DBG_APPLY_F12(f, _1, ...) f(_1) _DBG_APPLY_F11(f, __VA_ARGS__)
+#define _DBG_APPLY_F13(f, _1, ...) f(_1) _DBG_APPLY_F12(f, __VA_ARGS__)
+#define _DBG_APPLY_F14(f, _1, ...) f(_1) _DBG_APPLY_F13(f, __VA_ARGS__)
+#define _DBG_APPLY_F15(f, _1, ...) f(_1) _DBG_APPLY_F14(f, __VA_ARGS__)
+#define _DBG_APPLY_F16(f, _1, ...) f(_1) _DBG_APPLY_F15(f, __VA_ARGS__)
+#define _DBG_APPLY_HELPER(f, ...) f(__VA_ARGS__)
+#define _DBG_FOR_EACH(f, ...) \
+  _DBG_APPLY_HELPER(_DBG_CONCAT_HELPER(_DBG_APPLY_F, _DBG_COUNT_ARGS(__VA_ARGS__)), f, __VA_ARGS__)
+// end generated code
+
 #define DBG(x) \
   dbg::Debugger(__FILE__, __LINE__, __func__).print(static_cast<std::string>(#x), dbg::get_type_name<decltype(x)>(), x)
+
+#define _DBG_PRINT_STRUCT_FIELD(field)   \
+  {                                      \
+    os << #field << ": ";                \
+    print(os, value.field);              \
+    if (++i_field < n_field) os << ", "; \
+  }
+
+#define DBG_REGISTER(struct_type, ...)                          \
+  namespace dbg {                                               \
+  namespace printer {                                           \
+  template <>                                                   \
+  void print(std::ostream &os, const struct_type &value) {      \
+    size_t i_field = 0, n_field = _DBG_COUNT_ARGS(__VA_ARGS__); \
+    os << "{";                                                  \
+    _DBG_FOR_EACH(_DBG_PRINT_STRUCT_FIELD, __VA_ARGS__)         \
+    os << "}";                                                  \
+  }                                                             \
+  }                                                             \
+  }
