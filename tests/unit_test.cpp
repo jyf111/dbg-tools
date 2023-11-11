@@ -259,20 +259,20 @@ TEST_CASE("variadic argument", "[variadic]") {
 TEST_CASE("base output", "[base]") {
   char value = 110;
   short neg = -12;
-  // SECTION("Hex") {
-  //   DBG(dbg::Hex(value));
-  //   DBG(dbg::Hex(neg));
-  //   DBG(dbg::Hex(-neg));
-  // }
-  // SECTION("Bin") {
-  //   DBG(dbg::Bin(value));
-  //   DBG(dbg::Bin(neg));
-  //   DBG(dbg::Bin(-neg));
-  // }
-  // SECTION("Oct") {
-  //   DBG(dbg::Oct(value));
-  //   DBG(dbg::Oct(neg));
-  // }
+  SECTION("hex") {
+    DBG(dbg::hex(value));
+    DBG(dbg::hex(neg));
+    DBG(dbg::hex(-neg));
+  }
+  SECTION("bin") {
+    DBG(dbg::bin(value));
+    DBG(dbg::bin(neg));
+    DBG(dbg::bin(-neg));
+  }
+  SECTION("oct") {
+    DBG(dbg::oct(value));
+    DBG(dbg::oct(neg));
+  }
 }
 
 TEST_CASE("container", "[container]") {

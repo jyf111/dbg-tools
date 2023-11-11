@@ -107,17 +107,23 @@ DBG_COLOR_PRINT(type);
 #undef DBG_COLOR_PRINT
 }  // namespace printer
 
-template <std::integral T, size_t N>
+template <size_t N, std::integral T>
 struct Base {
   Base(T val) : val_(val) {}
   T val_;
 };
-template <typename T>
-using Bin = Base<T, 2>;
-template <typename T>
-using Oct = Base<T, 8>;
-template <typename T>
-using Hex = Base<T, 16>;
+template <std::integral T>
+Base<2, T> bin(T value) {
+  return Base<2, T>{ value };
+}
+template <std::integral T>
+Base<8, T> oct(T value) {
+  return Base<8, T>{ value };
+}
+template <std::integral T>
+Base<16, T> hex(T value) {
+  return Base<16, T>{ value };
+}
 
 template <typename T>
 concept is_aggregate = std::is_aggregate_v<T>;
@@ -268,8 +274,8 @@ std::string type_name(std::type_identity<std::type_identity<T>>) {
   return get_type_name<T>();
 }
 
-template <std::integral T, size_t N>
-std::string type_name(std::type_identity<Base<T, N>>) {
+template <size_t N, std::integral T>
+std::string type_name(std::type_identity<Base<N, T>>) {
   return get_type_name<T>();
 }
 
@@ -447,8 +453,8 @@ inline void print(std::ostream &os, const std::nullptr_t &value) { os << "nullpt
 
 inline void print(std::ostream &os, const std::nullopt_t &value) { os << "nullopt"; }
 
-template <typename T, size_t N>
-void print(std::ostream &os, const Base<T, N> &value) {
+template <size_t N, std::integral T>
+void print(std::ostream &os, const Base<N, T> &value) {
   if constexpr (N == 2) {
     os << "0b" << std::bitset<sizeof(T) * CHAR_BIT>(value.val_);
   } else {
