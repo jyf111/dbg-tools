@@ -11,6 +11,32 @@ struct data {
   };
   dir dr;
 };
+struct Bad {
+  int x, y;
+};
+DBG_REGISTER(Bad, x, y)
+struct MyStruct {
+  struct gps {
+    double latitude;
+    double longitude;
+  };
+  gps location;
+
+  struct image {
+    uint16_t width;
+    uint16_t height;
+    std::string url;
+
+    struct format {
+      enum class type { bayer_10bit, yuyv_422 };
+      type type;
+    };
+    format format;
+  };
+  image thumbnail;
+};
+
+MyStruct s{ { 41.13, -73.70 }, { 480, 340, "https://foo/bar/baz.jpg", { MyStruct::image::format::type::yuyv_422 } } };
 int main() {
   int a = 2;
   short b = 3;
@@ -18,11 +44,9 @@ int main() {
   int &ref = a;
   long &&rref = 4l;
   data d{ 1, 2, 3, "hello", { 6, 0, 8 } };
-  DBG(a);
-  DBG(b);
-  DBG(x);
-  DBG(ref);
-  DBG(rref);
+  DBG(a, b, x);
+  DBG(ref, rref);
+  DBG(d);
   std::deque<int> dq{ 1, 2 };
   DBG(dq);
   DBG((std::vector<int>{ 1, 2 }));
@@ -48,7 +72,6 @@ int main() {
   DBG(ttt);
   DBG(true);
   DBG(dbg::type<char[2][3][4]>());
-  // DBG();
   DBG("This is a message");
   DBG(std::string("This is a string"));
   const char *msg = "MMMM";
@@ -58,5 +81,10 @@ int main() {
   int y = DBG(x) + 2;
   const int32_t A = 2;
   const int32_t B = DBG(3 * A) + 1;
+  DBG(B);
+  DBG(s);
+  Bad bad = { 2, 5 };
+  DBG(bad);
+  DBG();
   return 0;
 }

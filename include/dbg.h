@@ -801,6 +801,17 @@ void print(std::ostream &os, const base<T, N> &value) {
 }
 }  // namespace printer
 
+template <typename T, typename... U>
+struct last {
+  using type = typename last<U...>::type;
+};
+template <typename T>
+struct last<T> {
+  using type = T;
+};
+template <typename... T>
+using last_t = typename last<T...>::type;
+
 class Debugger {
  public:
   Debugger(const char *file, int line, const char *func) : os_(config::get_stream()) {
@@ -816,14 +827,14 @@ class Debugger {
 
   void print() { os_ << (printer::location_print(location_) + '\n'); }
   template <typename... T>
-  void print(const std::initializer_list<std::string> &exprs, const std::initializer_list<std::string> &type_names,
-             T &&...values) {
-    print_impl(exprs.begin(), type_names.begin(), std::forward<T>(values)...);
+  auto print(const std::initializer_list<std::string> &exprs, const std::initializer_list<std::string> &type_names,
+             T &&...values) -> last_t<T...> {
+    return print_impl(exprs.begin(), type_names.begin(), std::forward<T>(values)...);
   }
 
  private:
   template <typename T>
-  void print_impl(const std::string *expr_iter, const std::string *type_name_iter, T &&value) {
+  T &&print_impl(const std::string *expr_iter, const std::string *type_name_iter, T &&value) {
     std::stringstream ss;
     ss << printer::location_print(location_) << ' ';
     ss << printer::expression_print(*expr_iter) << " = ";
@@ -832,20 +843,24 @@ class Debugger {
     ss << printer::value_print(ss2.str());
     ss << " (" << printer::type_print(*type_name_iter) << ")\n";
     os_ << ss.str();
+    return std::forward<T>(value);
   }
   template <size_t N>
-  void print_impl(const std::string *, const std::string *, const char (&value)[N]) {
+  auto print_impl(const std::string *, const std::string *, const char (&value)[N]) -> decltype(value) {
     os_ << (printer::location_print(location_) + ' ' + printer::message_print(value) + '\n');
+    return value;
   }
   template <typename T>
-  void print_impl(const std::string *, const std::string *type_name_iter, type<T> &&value) {
+  type<T> &&print_impl(const std::string *, const std::string *type_name_iter, type<T> &&value) {
     os_ << (printer::location_print(location_) + ' ' +
             printer::type_print(*type_name_iter + " [sizeof " + std::to_string(sizeof(T)) + "]") + '\n');
+    return std::forward<type<T>>(value);
   }
   template <typename T, typename... U>
-  void print_impl(const std::string *expr_iter, const std::string *type_name_iter, T &&value, U &&...rest) {
+  auto print_impl(const std::string *expr_iter, const std::string *type_name_iter, T &&value, U &&...rest)
+      -> last_t<U...> {
     print_impl(expr_iter, type_name_iter, std::forward<T>(value));
-    print_impl(expr_iter + 1, type_name_iter + 1, std::forward<U>(rest)...);
+    return print_impl(expr_iter + 1, type_name_iter + 1, std::forward<U>(rest)...);
   }
 
   std::ostream &os_;
