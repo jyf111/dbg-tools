@@ -126,37 +126,31 @@ concept is_enum = std::is_enum_v<T>;
 template <typename T>
 concept is_union = std::is_union_v<T>;
 template <typename T>
-concept has_begin = requires(T t) {
+concept is_iteratable = requires(const T &t) {
   std::begin(t);
-};
-template <typename T>
-concept has_end = requires(T t) {
   std::end(t);
-};
-template <typename T>
-concept has_size = requires(T t) {
   std::size(t);
 };
 template <typename T>
-concept has_ostream_operator = requires(std::ostream &os, T t) {
+concept has_ostream_operator = requires(std::ostream &os, const T &t) {
   os << t;
 };
 template <typename T>
-concept is_container = has_begin<T> && has_end<T> && has_size<T> && !std::same_as<std::decay_t<T>, std::string>;
+concept is_container = is_iteratable<T> && !std::same_as<std::decay_t<T>, std::string>;
 
 // Ignore explicitly specified template arguments
 template <int &...ExplicitArgumentBarrier, typename T>
 requires(!std::is_enum_v<T> && !std::is_union_v<T>) std::string type_name(std::type_identity<T>) {
   std::string_view pretty_name(std::source_location::current().function_name());
   const auto L = pretty_name.find("T = ") + 4;
-  const auto R = pretty_name.find_last_of(';');
+  const auto R = pretty_name.find_last_of(']');
   return std::string(pretty_name.substr(L, R - L));
 }
 template <is_enum Enum>
 std::string type_name(std::type_identity<Enum>) {
   std::string_view pretty_name(std::source_location::current().function_name());
   const auto L = pretty_name.find("Enum = ") + 7;
-  const auto R = pretty_name.find_last_of(';');
+  const auto R = pretty_name.find_last_of(']');
   return "enum " + std::string(pretty_name.substr(L, R - L)) + " : " +
          type_name(std::type_identity<std::underlying_type_t<Enum>>{});
 }
@@ -164,7 +158,7 @@ template <is_union Union>
 std::string type_name(std::type_identity<Union>) {
   std::string_view pretty_name(std::source_location::current().function_name());
   const auto L = pretty_name.find("Union = ") + 8;
-  const auto R = pretty_name.find_last_of(';');
+  const auto R = pretty_name.find_last_of(']');
   return "union " + std::string(pretty_name.substr(L, R - L));
 }
 
@@ -524,9 +518,65 @@ void print(std::ostream &os, const Container &value) {
   os << "]";
 }
 
+#if __has_builtin(__builtin_dump_struct) && __clang_major__ >= 15
+template <is_aggregate Aggregate>
+struct ReflectField {
+  static constexpr size_t n_field = flatten::num_aggregate_fields_v<Aggregate>;
+  inline static std::string fields[n_field];
+  inline static size_t i_field = 0;
+  static void constexpr_printf(const char *format, auto... args) {
+    if constexpr (sizeof...(args) > 1) {
+      if (i_field < n_field) {
+        auto tuple = std::tuple{ args... };
+        if (strlen(std::get<0>(tuple)) == 2) {
+          fields[i_field++] = std::get<2>(tuple);
+        }
+      }
+    }
+  }
+
+  inline static bool initialized = false;
+  static void initialize(const Aggregate &value) {
+    if (!initialized) {
+      __builtin_dump_struct(&value, constexpr_printf);
+      initialized = true;
+    }
+  }
+};
+
+template <is_aggregate Aggregate, size_t idx>
+struct print_named_tuple {
+  template <typename... Ts>
+  void operator()(std::ostream &os, const std::tuple<Ts...> &tuple) {
+    print_named_tuple<Aggregate, idx - 1>()(os, tuple);
+    os << ", " << ReflectField<Aggregate>::fields[idx] + ": ";
+    print(os, std::get<idx>(tuple));
+  }
+};
+template <is_aggregate Aggregate>
+struct print_named_tuple<Aggregate, 0> {
+  template <typename... Ts>
+  void operator()(std::ostream &os, const std::tuple<Ts...> &tuple) {
+    os << ReflectField<Aggregate>::fields[0] + ": ";
+    print(os, std::get<0>(tuple));
+  }
+};
+#endif
+
 template <is_aggregate Aggregate>
 requires(!is_container<Aggregate>) void print(std::ostream &os, const Aggregate &value) {
-  print(os, flatten::flatten_to_tuple(value));
+  const auto &tuple = flatten::flatten_to_tuple(value);
+#if __has_builtin(__builtin_dump_struct) && __clang_major__ >= 15
+  ReflectField<Aggregate>::initialize(value);
+  os << "{";
+  constexpr size_t tuple_size = std::tuple_size_v<std::remove_cvref_t<decltype(tuple)>>;
+  if constexpr (tuple_size > 0) {
+    print_named_tuple<Aggregate, tuple_size - 1>()(os, tuple);
+  }
+  os << "}";
+#else
+  print(os, tuple);
+#endif
 }
 
 template <size_t idx>

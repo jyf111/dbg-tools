@@ -10,8 +10,9 @@ struct data {
 };
 struct Bad {
   int x, y;
-  std::initializer_list<int> z = { 5, 9, 10 };
+  std::initializer_list<int> z;
 };
+DBG_REGISTER(Bad, x, y, z);
 struct MyStruct {
   struct gps {
     double latitude;

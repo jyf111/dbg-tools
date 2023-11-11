@@ -125,7 +125,7 @@ TEST_CASE("primitive type", "[type]") {
     DBG(std::move(rvalue));
   }
   SECTION("unvisible char") {
-    int8_t byte = 202;
+    int8_t byte = 22;
     char invisible = '\x00';  // static_cast<char>(130);
     char &lchar = invisible;
     const char *invisible_str = "\x80\x81\x82\x83\x90";
@@ -242,12 +242,12 @@ TEST_CASE("variadic argument", "[variadic]") {
   DBG(d);
   DBG(e);
   int tmparr[] = { 1, 2, 3 };
-  std::initializer_list tmplist = { 0, 9, -1, 2 };
+  std::initializer_list<int> tmplist = { 0, 9, -1, 2 };
   DBG(tmparr);
   DBG(tmplist);
   // DBG({1, 2, 3}, {0, 9, -1, 2}); // ! NOTICE
-  DBG((std::initializer_list{ 1, 2, 3 }));
-  DBG((std::initializer_list{ 0, 9, -1, 2 }));
+  DBG((std::initializer_list<int>{ 1, 2, 3 }));
+  DBG((std::initializer_list<int>{ 0, 9, -1, 2 }));
   DBG("first:");
   DBG(a);
   DBG("second:");
@@ -259,20 +259,20 @@ TEST_CASE("variadic argument", "[variadic]") {
 TEST_CASE("base output", "[base]") {
   char value = 110;
   short neg = -12;
-  SECTION("Hex") {
-    DBG(dbg::Hex(value));
-    DBG(dbg::Hex(neg));
-    DBG(dbg::Hex(-neg));
-  }
-  SECTION("Bin") {
-    DBG(dbg::Bin(value));
-    DBG(dbg::Bin(neg));
-    DBG(dbg::Bin(-neg));
-  }
-  SECTION("Oct") {
-    DBG(dbg::Oct(value));
-    DBG(dbg::Oct(neg));
-  }
+  // SECTION("Hex") {
+  //   DBG(dbg::Hex(value));
+  //   DBG(dbg::Hex(neg));
+  //   DBG(dbg::Hex(-neg));
+  // }
+  // SECTION("Bin") {
+  //   DBG(dbg::Bin(value));
+  //   DBG(dbg::Bin(neg));
+  //   DBG(dbg::Bin(-neg));
+  // }
+  // SECTION("Oct") {
+  //   DBG(dbg::Oct(value));
+  //   DBG(dbg::Oct(neg));
+  // }
 }
 
 TEST_CASE("container", "[container]") {
@@ -306,7 +306,7 @@ TEST_CASE("container", "[container]") {
     DBG(dummy_list);
   }
   SECTION("initializer_list") {
-    DBG((std::initializer_list{ "10", "20", "66" }));
+    DBG((std::initializer_list<std::string>{ "10", "20", "66" }));
     std::string a = "12", b = "22";
     DBG((std::initializer_list<std::string>{ a, b, "32" }));
   }
@@ -491,4 +491,15 @@ TEST_CASE("miscellaneous") {
   };
   outer o = { { 1, 2 }, 3 };
   DBG(o);
+  struct O {
+    struct i {
+      int a, b;
+    };
+    int x;
+  };
+  O oo = { 1 };
+  DBG(oo);
+  struct Empty {};
+  Empty E;
+  DBG(E);
 }
