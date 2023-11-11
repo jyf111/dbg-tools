@@ -815,31 +815,39 @@ class Debugger {
   const Debugger &operator=(const Debugger &) = delete;
 
   void print() { os_ << (printer::location_print(location_) + '\n'); }
-  template <typename T>
-  T &&print(const std::string &expr, const std::string &type_name, T &&value) {
-    std::stringstream ss;
-    ss << printer::location_print(location_) << ' ';
-    ss << printer::expression_print(expr) << " = ";
-    std::stringstream ss2;
-    printer::print(ss2, value);
-    ss << printer::value_print(ss2.str());
-    ss << " (" << printer::type_print(type_name) << ")\n";
-    os_ << ss.str();
-    return std::forward<T>(value);
-  }
-  template <size_t N>
-  auto print(const std::string &, const std::string &, const char (&value)[N]) -> decltype(value) {
-    os_ << (printer::location_print(location_) + ' ' + printer::message_print(value) + '\n');
-    return value;
-  }
-  template <typename T>
-  type<T> &&print(const std::string &, const std::string &type_name, type<T> &&value) {
-    os_ << (printer::location_print(location_) + ' ' +
-            printer::type_print(type_name + " [sizeof " + std::to_string(sizeof(T)) + "]") + '\n');
-    return std::forward<type<T>>(value);
+  template <typename... T>
+  void print(const std::initializer_list<std::string> &exprs, const std::initializer_list<std::string> &type_names,
+             T &&...values) {
+    print_impl(exprs.begin(), type_names.begin(), std::forward<T>(values)...);
   }
 
  private:
+  template <typename T>
+  void print_impl(const std::string *expr_iter, const std::string *type_name_iter, T &&value) {
+    std::stringstream ss;
+    ss << printer::location_print(location_) << ' ';
+    ss << printer::expression_print(*expr_iter) << " = ";
+    std::stringstream ss2;
+    printer::print(ss2, value);
+    ss << printer::value_print(ss2.str());
+    ss << " (" << printer::type_print(*type_name_iter) << ")\n";
+    os_ << ss.str();
+  }
+  template <size_t N>
+  void print_impl(const std::string *, const std::string *, const char (&value)[N]) {
+    os_ << (printer::location_print(location_) + ' ' + printer::message_print(value) + '\n');
+  }
+  template <typename T>
+  void print_impl(const std::string *, const std::string *type_name_iter, type<T> &&value) {
+    os_ << (printer::location_print(location_) + ' ' +
+            printer::type_print(*type_name_iter + " [sizeof " + std::to_string(sizeof(T)) + "]") + '\n');
+  }
+  template <typename T, typename... U>
+  void print_impl(const std::string *expr_iter, const std::string *type_name_iter, T &&value, U &&...rest) {
+    print_impl(expr_iter, type_name_iter, std::forward<T>(value));
+    print_impl(expr_iter + 1, type_name_iter + 1, std::forward<U>(rest)...);
+  }
+
   std::ostream &os_;
   std::string location_;
 
@@ -853,29 +861,53 @@ class Debugger {
 #define _DBG_GET_NTH_ARG(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, N, ...) N
 #define _DBG_COUNT_ARGS(...) _DBG_GET_NTH_ARG(__VA_ARGS__, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
 #define _DBG_APPLY_F0(f)
+#define _DBG_APPLY_WITH_COMMA_F0(f)
 #define _DBG_APPLY_F1(f, _1) f(_1)
+#define _DBG_APPLY_WITH_COMMA_F1(f, _1) f(_1)
 #define _DBG_APPLY_F2(f, _1, ...) f(_1) _DBG_APPLY_F1(f, __VA_ARGS__)
+#define _DBG_APPLY_WITH_COMMA_F2(f, _1, ...) f(_1), _DBG_APPLY_WITH_COMMA_F1(f, __VA_ARGS__)
 #define _DBG_APPLY_F3(f, _1, ...) f(_1) _DBG_APPLY_F2(f, __VA_ARGS__)
+#define _DBG_APPLY_WITH_COMMA_F3(f, _1, ...) f(_1), _DBG_APPLY_WITH_COMMA_F2(f, __VA_ARGS__)
 #define _DBG_APPLY_F4(f, _1, ...) f(_1) _DBG_APPLY_F3(f, __VA_ARGS__)
+#define _DBG_APPLY_WITH_COMMA_F4(f, _1, ...) f(_1), _DBG_APPLY_WITH_COMMA_F3(f, __VA_ARGS__)
 #define _DBG_APPLY_F5(f, _1, ...) f(_1) _DBG_APPLY_F4(f, __VA_ARGS__)
+#define _DBG_APPLY_WITH_COMMA_F5(f, _1, ...) f(_1), _DBG_APPLY_WITH_COMMA_F4(f, __VA_ARGS__)
 #define _DBG_APPLY_F6(f, _1, ...) f(_1) _DBG_APPLY_F5(f, __VA_ARGS__)
+#define _DBG_APPLY_WITH_COMMA_F6(f, _1, ...) f(_1), _DBG_APPLY_WITH_COMMA_F5(f, __VA_ARGS__)
 #define _DBG_APPLY_F7(f, _1, ...) f(_1) _DBG_APPLY_F6(f, __VA_ARGS__)
+#define _DBG_APPLY_WITH_COMMA_F7(f, _1, ...) f(_1), _DBG_APPLY_WITH_COMMA_F6(f, __VA_ARGS__)
 #define _DBG_APPLY_F8(f, _1, ...) f(_1) _DBG_APPLY_F7(f, __VA_ARGS__)
+#define _DBG_APPLY_WITH_COMMA_F8(f, _1, ...) f(_1), _DBG_APPLY_WITH_COMMA_F7(f, __VA_ARGS__)
 #define _DBG_APPLY_F9(f, _1, ...) f(_1) _DBG_APPLY_F8(f, __VA_ARGS__)
+#define _DBG_APPLY_WITH_COMMA_F9(f, _1, ...) f(_1), _DBG_APPLY_WITH_COMMA_F8(f, __VA_ARGS__)
 #define _DBG_APPLY_F10(f, _1, ...) f(_1) _DBG_APPLY_F9(f, __VA_ARGS__)
+#define _DBG_APPLY_WITH_COMMA_F10(f, _1, ...) f(_1), _DBG_APPLY_WITH_COMMA_F9(f, __VA_ARGS__)
 #define _DBG_APPLY_F11(f, _1, ...) f(_1) _DBG_APPLY_F10(f, __VA_ARGS__)
+#define _DBG_APPLY_WITH_COMMA_F11(f, _1, ...) f(_1), _DBG_APPLY_WITH_COMMA_F10(f, __VA_ARGS__)
 #define _DBG_APPLY_F12(f, _1, ...) f(_1) _DBG_APPLY_F11(f, __VA_ARGS__)
+#define _DBG_APPLY_WITH_COMMA_F12(f, _1, ...) f(_1), _DBG_APPLY_WITH_COMMA_F11(f, __VA_ARGS__)
 #define _DBG_APPLY_F13(f, _1, ...) f(_1) _DBG_APPLY_F12(f, __VA_ARGS__)
+#define _DBG_APPLY_WITH_COMMA_F13(f, _1, ...) f(_1), _DBG_APPLY_WITH_COMMA_F12(f, __VA_ARGS__)
 #define _DBG_APPLY_F14(f, _1, ...) f(_1) _DBG_APPLY_F13(f, __VA_ARGS__)
+#define _DBG_APPLY_WITH_COMMA_F14(f, _1, ...) f(_1), _DBG_APPLY_WITH_COMMA_F13(f, __VA_ARGS__)
 #define _DBG_APPLY_F15(f, _1, ...) f(_1) _DBG_APPLY_F14(f, __VA_ARGS__)
+#define _DBG_APPLY_WITH_COMMA_F15(f, _1, ...) f(_1), _DBG_APPLY_WITH_COMMA_F14(f, __VA_ARGS__)
 #define _DBG_APPLY_F16(f, _1, ...) f(_1) _DBG_APPLY_F15(f, __VA_ARGS__)
+#define _DBG_APPLY_WITH_COMMA_F16(f, _1, ...) f(_1), _DBG_APPLY_WITH_COMMA_F15(f, __VA_ARGS__)
 #define _DBG_APPLY_HELPER(f, ...) f(__VA_ARGS__)
 #define _DBG_FOR_EACH(f, ...) \
   _DBG_APPLY_HELPER(_DBG_CONCAT_HELPER(_DBG_APPLY_F, _DBG_COUNT_ARGS(__VA_ARGS__)), f, __VA_ARGS__)
+#define _DBG_FOR_EACH_WITH_COMMA(f, ...) \
+  _DBG_APPLY_HELPER(_DBG_CONCAT_HELPER(_DBG_APPLY_WITH_COMMA_F, _DBG_COUNT_ARGS(__VA_ARGS__)), f, __VA_ARGS__)
 // end generated code
 
-#define DBG(x) \
-  dbg::Debugger(__FILE__, __LINE__, __func__).print(static_cast<std::string>(#x), dbg::get_type_name<decltype(x)>(), x)
+#define _DBG_GET_EXPR(x) static_cast<std::string>(#x)
+#define _DBG_GET_TYPE(x) dbg::get_type_name<decltype(x)>()
+
+#define DBG(...)                                                                  \
+  dbg::Debugger(__FILE__, __LINE__, __func__)                                     \
+      .print(__VA_OPT__({ _DBG_FOR_EACH_WITH_COMMA(_DBG_GET_EXPR, __VA_ARGS__) }, \
+                        { _DBG_FOR_EACH_WITH_COMMA(_DBG_GET_TYPE, __VA_ARGS__) }, __VA_ARGS__))
 
 #define _DBG_PRINT_STRUCT_FIELD(field)   \
   {                                      \
@@ -884,15 +916,15 @@ class Debugger {
     if (++i_field < n_field) os << ", "; \
   }
 
-#define DBG_REGISTER(struct_type, ...)                          \
-  namespace dbg {                                               \
-  namespace printer {                                           \
-  template <>                                                   \
-  void print(std::ostream &os, const struct_type &value) {      \
-    size_t i_field = 0, n_field = _DBG_COUNT_ARGS(__VA_ARGS__); \
-    os << "{";                                                  \
-    _DBG_FOR_EACH(_DBG_PRINT_STRUCT_FIELD, __VA_ARGS__)         \
-    os << "}";                                                  \
-  }                                                             \
-  }                                                             \
+#define DBG_REGISTER(struct_type, ...)                              \
+  namespace dbg {                                                   \
+  namespace printer {                                               \
+  template <>                                                       \
+  void print(std::ostream &os, const struct_type &value) {          \
+    size_t i_field = 0, n_field = _DBG_COUNT_ARGS(__VA_ARGS__);     \
+    os << "{";                                                      \
+    __VA_OPT__(_DBG_FOR_EACH(_DBG_PRINT_STRUCT_FIELD, __VA_ARGS__)) \
+    os << "}";                                                      \
+  }                                                                 \
+  }                                                                 \
   }

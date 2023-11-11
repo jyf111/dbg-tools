@@ -22,5 +22,13 @@ if __name__ == "__main__":
         print(",_1) f(_1)")
       else:
         print(f",_1,...) f(_1)_DBG_APPLY_F{i - 1}(f,__VA_ARGS__)")
+      print(f"#define _DBG_APPLY_WITH_COMMA_F{i}(f", end="")
+      if i == 0:
+        print(")")
+      elif i == 1:
+        print(",_1) f(_1)")
+      else:
+        print(f",_1,...) f(_1),_DBG_APPLY_WITH_COMMA_F{i - 1}(f,__VA_ARGS__)")
     print("#define _DBG_APPLY_HELPER(f,...) f(__VA_ARGS__)")
     print("#define _DBG_FOR_EACH(f,...) _DBG_APPLY_HELPER(_DBG_CONCAT_HELPER(_DBG_APPLY_F,_DBG_COUNT_ARGS(__VA_ARGS__)),f,__VA_ARGS__)")
+    print("#define _DBG_FOR_EACH_WITH_COMMA(f,...) _DBG_APPLY_HELPER(_DBG_CONCAT_HELPER(_DBG_APPLY_WITH_COMMA_F,_DBG_COUNT_ARGS(__VA_ARGS__)),f,__VA_ARGS__)")
