@@ -94,6 +94,9 @@ int main() {
   pq.push(2);
   pq.push(1);
   DBG(pq);
-  dbg::last_t<int, double> gggg = 1.;
+  std::vector<Bad> bads;
+  bads.push_back({ 1, 2 });
+  bads.push_back(bad);
+  DBG(bads);
   return 0;
 }

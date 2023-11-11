@@ -144,6 +144,7 @@ concept has_ostream_operator = requires(std::ostream &os, const T &t) {
 template <typename T>
 concept is_container = is_iteratable<T> && !std::same_as<std::decay_t<T>, std::string>;
 
+namespace detail {
 // Ignore explicitly specified template arguments
 template <int &...ExplicitArgumentBarrier, typename T>
 requires(!std::is_enum_v<T> && !std::is_union_v<T>) std::string type_name(std::type_identity<T>) {
@@ -199,6 +200,7 @@ DBG_PRIMITIVE_TYPE_NAME(unsigned long long, uint64_t, 64);
 inline std::string type_name(std::type_identity<std::any>) { return "std::any"; }
 inline std::string type_name(std::type_identity<std::string>) { return "std::string"; }
 inline std::string type_name(std::type_identity<std::string_view>) { return "std::string_view"; }
+}  // namespace detail
 
 template <typename T>
 std::string get_type_name() {
@@ -225,9 +227,10 @@ std::string get_type_name() {
   if (std::is_rvalue_reference_v<T>) {
     return get_type_name<std::remove_reference_t<T>>() + " &&";
   }
-  return type_name(std::type_identity<T>{});
+  return detail::type_name(std::type_identity<T>{});
 }
 
+namespace detail {
 #define DBG_TEMPLATE_TYPE_NAME_1(std_type, temp, get_temp_type_name) \
   template <temp>                                                    \
   inline std::string type_name(std::type_identity<std_type<T>>) {    \
@@ -290,6 +293,7 @@ template <size_t N, std::integral T>
 std::string type_name(std::type_identity<Base<N, T>>) {
   return get_type_name<T>();
 }
+}  // namespace detail
 
 namespace flatten {
 struct any_constructor {
@@ -436,15 +440,16 @@ inline void print_impl(std::ostream &os, const char &value) {
     os << oss.str();
   }
 }
+}  // namespace printer
 
 template <typename T>
 void print(std::ostream &os, const T &value) {
-  print_impl(os, value);
+  printer::print_impl(os, value);
 }
 
 inline void print(std::ostream &os, const std::string &value) {
   os << '"';
-  for (const auto &c : value) print_impl(os, c);
+  for (const auto &c : value) printer::print_impl(os, c);
   os << '"';
 }
 inline void print(std::ostream &os, const std::string_view &value) { print(os, std::string(value)); }
@@ -452,7 +457,7 @@ inline void print(std::ostream &os, const char *const &value) { print(os, std::s
 
 inline void print(std::ostream &os, const char &value) {
   os << "'";
-  print_impl(os, value);
+  printer::print_impl(os, value);
   os << "'";
 }
 
@@ -537,6 +542,7 @@ void print(std::ostream &os, const Container &value) {
 }
 
 #if __has_builtin(__builtin_dump_struct) && __clang_major__ >= 15
+namespace detail {
 template <is_aggregate Aggregate>
 struct ReflectField {
   static constexpr size_t n_field = flatten::num_aggregate_fields_v<Aggregate>;
@@ -579,17 +585,18 @@ struct print_named_tuple<Aggregate, 0> {
     print(os, std::get<0>(tuple));
   }
 };
+}  // namespace detail
 #endif
 
 template <is_aggregate Aggregate>
 requires(!is_container<Aggregate>) void print(std::ostream &os, const Aggregate &value) {
   const auto &tuple = flatten::flatten_to_tuple(value);
 #if __has_builtin(__builtin_dump_struct) && __clang_major__ >= 15
-  ReflectField<Aggregate>::initialize(value);
+  detail::ReflectField<Aggregate>::initialize(value);
   os << "{";
   constexpr size_t tuple_size = std::tuple_size_v<std::remove_cvref_t<decltype(tuple)>>;
   if constexpr (tuple_size > 0) {
-    print_named_tuple<Aggregate, tuple_size - 1>()(os, tuple);
+    detail::print_named_tuple<Aggregate, tuple_size - 1>()(os, tuple);
   }
   os << "}";
 #else
@@ -597,6 +604,7 @@ requires(!is_container<Aggregate>) void print(std::ostream &os, const Aggregate 
 #endif
 }
 
+namespace detail {
 template <size_t idx>
 struct print_tuple {
   template <typename... Ts>
@@ -613,10 +621,12 @@ struct print_tuple<0> {
     print(os, std::get<0>(tuple));
   }
 };
+}  // namespace detail
+
 template <typename... Ts>
 void print(std::ostream &os, const std::tuple<Ts...> &value) {
   os << "{";
-  print_tuple<sizeof...(Ts) - 1>()(os, value);
+  detail::print_tuple<sizeof...(Ts) - 1>()(os, value);
   os << "}";
 }
 template <>
@@ -757,14 +767,15 @@ void print(std::ostream &os, const std::priority_queue<T, C, Cmp> &value) {
   }
   os << "]";
 }
-}  // namespace printer
 
+namespace detail {
 template <typename... Ts>
 struct last {
   using type = typename decltype((std::type_identity<Ts>{}, ...))::type;
 };
 template <typename... Ts>
 using last_t = typename last<Ts...>::type;
+}  // namespace detail
 
 class Debugger {
  public:
@@ -782,7 +793,7 @@ class Debugger {
   void print() { os_ << (printer::location_print(location_) + '\n'); }
   template <typename... T>
   auto print(const std::initializer_list<std::string> &exprs, const std::initializer_list<std::string> &type_names,
-             T &&...values) -> last_t<T...> {
+             T &&...values) -> detail::last_t<T...> {
     return print_impl(exprs.begin(), type_names.begin(), std::forward<T>(values)...);
   }
 
@@ -793,7 +804,7 @@ class Debugger {
     ss << printer::location_print(location_) << ' ';
     ss << printer::expression_print(*expr_iter) << " = ";
     std::stringstream ss2;
-    printer::print(ss2, value);
+    dbg::print(ss2, value);
     ss << printer::value_print(ss2.str());
     ss << " (" << printer::type_print(*type_name_iter) << ")\n";
     os_ << ss.str();
@@ -813,7 +824,7 @@ class Debugger {
   }
   template <typename T, typename... U>
   auto print_impl(const std::string *expr_iter, const std::string *type_name_iter, T &&value, U &&...rest)
-      -> last_t<T, U...> {
+      -> detail::last_t<T, U...> {
     print_impl(expr_iter, type_name_iter, std::forward<T>(value));
     return print_impl(expr_iter + 1, type_name_iter + 1, std::forward<U>(rest)...);
   }
@@ -873,7 +884,6 @@ class Debugger {
 
 #define _DBG_GET_EXPR(x) std::string(#x)
 #define _DBG_GET_TYPE(x) dbg::get_type_name<decltype(x)>()
-
 #define DBG(...)                                                                  \
   dbg::Debugger(__FILE__, __LINE__, __func__)                                     \
       .print(__VA_OPT__({ _DBG_FOR_EACH_WITH_COMMA(_DBG_GET_EXPR, __VA_ARGS__) }, \
@@ -885,16 +895,12 @@ class Debugger {
     print(os, value.field);              \
     if (++i_field < n_field) os << ", "; \
   }
-
 #define DBG_REGISTER(struct_type, ...)                              \
   namespace dbg {                                                   \
-  namespace printer {                                               \
-  template <>                                                       \
-  void print(std::ostream &os, const struct_type &value) {          \
+  inline void print(std::ostream &os, const struct_type &value) {   \
     size_t i_field = 0, n_field = _DBG_COUNT_ARGS(__VA_ARGS__);     \
     os << "{";                                                      \
     __VA_OPT__(_DBG_FOR_EACH(_DBG_PRINT_STRUCT_FIELD, __VA_ARGS__)) \
     os << "}";                                                      \
-  }                                                                 \
   }                                                                 \
   }
