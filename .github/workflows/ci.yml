@@ -4,27 +4,39 @@ on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - { os: ubuntu-latest, compiler: "g++" }
+          - { os: ubuntu-latest, compiler: "clang++" }
+    runs-on: ${{ matrix.job.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+
+      - name: Set up Clang
+        if: matrix.job.compiler == 'clang++'
+        uses: egor-tensin/setup-clang@v1
+        with:
+          version: 15
 
       - name: Dependencies
         run: |
           git config --global url.https://github.com/.insteadOf git://github.com/
           git clone https://github.com/catchorg/Catch2.git --depth 1 --branch v3.4.0
           cd Catch2
-          cmake -B build -H. -DBUILD_TESTING=OFF
+          cmake -B build -DBUILD_TESTING=OFF -DCMAKE_CXX_COMPILER=${{ matrix.job.compiler }}
           sudo cmake --build build --target install
 
       - name: Install
         run: |
-          cmake -B build -S .
+          cmake -B build -S . -DCMAKE_CXX_COMPILER=${{ matrix.job.compiler }}
           sudo cmake --build build --target install
 
       - name: Test
         run: |
-          cmake -B build -S . -DENABLE_TESTS=ON -DBUILD_EXAMPLES=on
+          cmake -B build -S . -DENABLE_TESTS=ON -DBUILD_EXAMPLES=on -DCMAKE_CXX_COMPILER=${{ matrix.job.compiler }}
           cmake --build build
           cmake --build build --target test
           build/examples/demo

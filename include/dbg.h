@@ -149,14 +149,22 @@ template <int &...ExplicitArgumentBarrier, typename T>
 requires(!std::is_enum_v<T> && !std::is_union_v<T>) std::string type_name(std::type_identity<T>) {
   std::string_view pretty_name(std::source_location::current().function_name());
   const auto L = pretty_name.find("T = ") + 4;
+#if defined(__clang__)
   const auto R = pretty_name.find_last_of(']');
+#else
+  const auto R = pretty_name.find_last_of(';');
+#endif
   return std::string(pretty_name.substr(L, R - L));
 }
 template <is_enum Enum>
 std::string type_name(std::type_identity<Enum>) {
   std::string_view pretty_name(std::source_location::current().function_name());
   const auto L = pretty_name.find("Enum = ") + 7;
+#if defined(__clang__)
   const auto R = pretty_name.find_last_of(']');
+#else
+  const auto R = pretty_name.find_last_of(';');
+#endif
   return "enum " + std::string(pretty_name.substr(L, R - L)) + " : " +
          type_name(std::type_identity<std::underlying_type_t<Enum>>{});
 }
@@ -164,7 +172,11 @@ template <is_union Union>
 std::string type_name(std::type_identity<Union>) {
   std::string_view pretty_name(std::source_location::current().function_name());
   const auto L = pretty_name.find("Union = ") + 8;
+#if defined(__clang__)
   const auto R = pretty_name.find_last_of(']');
+#else
+  const auto R = pretty_name.find_last_of(';');
+#endif
   return "union " + std::string(pretty_name.substr(L, R - L));
 }
 
