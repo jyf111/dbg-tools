@@ -1,4 +1,4 @@
-HEADER = "template <typename T>\nconstexpr auto flatten_impl(const T& t, std::integral_constant<std::size_t, 0> N1) noexcept {\n"
+HEADER = "template <is_aggregate Aggregate>\nconstexpr auto flatten_impl(const Aggregate& t, std::integral_constant<size_t, 0> N1) noexcept {\n"
 index = HEADER.find('0')
 
 def gen_head(num):
@@ -31,3 +31,8 @@ if __name__ == "__main__":
   else:
     for i in range(int(sys.argv[1]) + 1):
       print(gen(i))
+    print("template <is_aggregate Aggregate, size_t N>")
+    print("constexpr auto flatten_impl(const Aggregate &t, std::integral_constant<size_t, N> N1) noexcept {")
+    print("  config::get_stream() << printer::error_print(\"Please rerun utils/gen_flatten.py to generate more binds!\");")
+    print("  return std::forward_as_tuple();")
+    print("}")

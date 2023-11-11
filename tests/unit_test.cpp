@@ -1,4 +1,3 @@
-#include <any>
 #include <catch2/catch_test_macros.hpp>
 
 #include "dbg.h"
@@ -260,19 +259,19 @@ TEST_CASE("variadic argument", "[variadic]") {
 TEST_CASE("base output", "[base]") {
   char value = 110;
   short neg = -12;
-  SECTION("hex") {
-    DBG(dbg::hex(value));
-    DBG(dbg::hex(neg));
-    DBG(dbg::hex(-neg));
+  SECTION("Hex") {
+    DBG(dbg::Hex(value));
+    DBG(dbg::Hex(neg));
+    DBG(dbg::Hex(-neg));
   }
-  SECTION("bin") {
-    DBG(dbg::bin(value));
-    DBG(dbg::bin(neg));
-    DBG(dbg::bin(-neg));
+  SECTION("Bin") {
+    DBG(dbg::Bin(value));
+    DBG(dbg::Bin(neg));
+    DBG(dbg::Bin(-neg));
   }
-  SECTION("oct") {
-    DBG(dbg::oct(value));
-    DBG(dbg::oct(neg));
+  SECTION("Oct") {
+    DBG(dbg::Oct(value));
+    DBG(dbg::Oct(neg));
   }
 }
 
@@ -350,7 +349,7 @@ union gb_union {
 TEST_CASE("union") {
   gb_union gb;
   gb.x = 2;
-  DBG(dbg::type<decltype(gb)>());
+  DBG(std::type_identity<decltype(gb)>());
   DBG(gb.x);
   union data {
     int n;
@@ -360,7 +359,7 @@ TEST_CASE("union") {
   ud.f = 1.23;
   DBG(ud.f);
   // dbg(ud); // ! cann't know the value
-  DBG(dbg::type<decltype(ud)>());
+  DBG(std::type_identity<decltype(ud)>());
 }
 
 enum gb_enum { bad, ok };
@@ -414,7 +413,6 @@ TEST_CASE("aggregate") {
   gb_struct gs{ 1, 2, 3, 4 };
   DBG(gs);
   gb_class_private gcp;
-  DBG(gcp);
   DBG(std::is_aggregate_v<gb_class_private>);
   gb_class gc{ 166 };
   DBG(gc);
@@ -436,7 +434,7 @@ TEST_CASE("aggregate") {
     char ch;
     std::string name;
   };
-  DBG(dbg::flatten::unique_counter_impl<complex_data>());
+  DBG(dbg::flatten::num_aggregate_fields_v<complex_data>);
   int tmp = 6;
   complex_data cd = { { 1, 2, 3 }, { 6, 6.6 }, &tmp, "complex", 'P', "Alex" };
   DBG(cd);

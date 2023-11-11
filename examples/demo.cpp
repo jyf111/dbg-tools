@@ -1,6 +1,3 @@
-#include <any>
-#include <valarray>
-
 #include "dbg.h"
 struct data {
   int a, b, c;
@@ -13,8 +10,8 @@ struct data {
 };
 struct Bad {
   int x, y;
+  std::initializer_list<int> z = { 5, 9, 10 };
 };
-DBG_REGISTER(Bad, x, y)
 struct MyStruct {
   struct gps {
     double latitude;
@@ -35,7 +32,13 @@ struct MyStruct {
   };
   image thumbnail;
 };
-
+int gg;
+struct MyStruct3 {
+  int a;
+  float b;
+  std::string c;
+  int arr[5];
+} s3{ 0, 1., "23" };
 MyStruct s{ { 41.13, -73.70 }, { 480, 340, "https://foo/bar/baz.jpg", { MyStruct::image::format::type::yuyv_422 } } };
 int main() {
   int a = 2;
@@ -56,7 +59,6 @@ int main() {
   std::valarray<int> g = { 1, 2 };
   DBG(g);
   std::any aa = 1;
-  DBG(aa);
   union gb_union {
     int x;
     short y;
@@ -71,7 +73,7 @@ int main() {
   uint8_t ttt = 1;
   DBG(ttt);
   DBG(true);
-  DBG(dbg::type<char[2][3][4]>());
+  DBG(std::type_identity<char[2][3][4]>());
   DBG("This is a message");
   DBG(std::string("This is a string"));
   const char *msg = "MMMM";
@@ -86,5 +88,11 @@ int main() {
   Bad bad = { 2, 5 };
   DBG(bad);
   DBG();
+  DBG(s3);
+  std::priority_queue<int, std::vector<int>, std::greater<int>> pq;
+  pq.push(2);
+  pq.push(1);
+  DBG(pq);
+  dbg::last_t<int, double> gggg = 1.;
   return 0;
 }

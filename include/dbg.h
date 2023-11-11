@@ -1,6 +1,8 @@
 #pragma once
 
+#include <any>
 #include <bitset>
+#include <concepts>
 #include <cstring>
 #include <forward_list>
 #include <fstream>
@@ -19,6 +21,7 @@
 #include <tuple>
 #include <unordered_map>
 #include <unordered_set>
+#include <valarray>
 #include <variant>
 #include <vector>
 
@@ -66,7 +69,7 @@ inline std::ostream &get_stream() {
   else
     return std::cerr;
 }
-inline std::size_t &container_length() { return getter().CONTAINER_LENGTH; }
+inline size_t &container_length() { return getter().CONTAINER_LENGTH; }
 inline std::string &location_color() { return getter().LOCATION_COLOR; }
 inline std::string &expression_color() { return getter().EXPRESSION_COLOR; }
 inline std::string &value_color() { return getter().VALUE_COLOR; }
@@ -104,34 +107,71 @@ DBG_COLOR_PRINT(type);
 #undef DBG_COLOR_PRINT
 }  // namespace printer
 
-template <typename T>
-struct type {};
-
-template <typename T, size_t N>
-struct base {
-  static_assert(std::is_integral<T>::value, "Only integral types are supported!");
-
-  base(T val) : val_(val) {}
-
+template <std::integral T, size_t N>
+struct Base {
+  Base(T val) : val_(val) {}
   T val_;
 };
 template <typename T>
-using bin = base<T, 2>;
+using Bin = Base<T, 2>;
 template <typename T>
-using oct = base<T, 8>;
+using Oct = Base<T, 8>;
 template <typename T>
-using hex = base<T, 16>;
+using Hex = Base<T, 16>;
 
+template <typename T>
+concept is_aggregate = std::is_aggregate_v<T>;
+template <typename T>
+concept is_enum = std::is_enum_v<T>;
+template <typename T>
+concept is_union = std::is_union_v<T>;
+template <typename T>
+concept has_begin = requires(T t) {
+  std::begin(t);
+};
+template <typename T>
+concept has_end = requires(T t) {
+  std::end(t);
+};
+template <typename T>
+concept has_size = requires(T t) {
+  std::size(t);
+};
+template <typename T>
+concept has_ostream_operator = requires(std::ostream &os, T t) {
+  os << t;
+};
+template <typename T>
+concept is_container = has_begin<T> && has_end<T> && has_size<T> && !std::same_as<std::decay_t<T>, std::string>;
+
+// Ignore explicitly specified template arguments
 template <int &...ExplicitArgumentBarrier, typename T>
-std::enable_if_t<!std::is_enum_v<T> && !std::is_union_v<T>, std::string> type_name(type<T>) {
+requires(!std::is_enum_v<T> && !std::is_union_v<T>) std::string type_name(std::type_identity<T>) {
   std::string_view pretty_name(std::source_location::current().function_name());
   const auto L = pretty_name.find("T = ") + 4;
   const auto R = pretty_name.find_last_of(';');
   return std::string(pretty_name.substr(L, R - L));
 }
+template <is_enum Enum>
+std::string type_name(std::type_identity<Enum>) {
+  std::string_view pretty_name(std::source_location::current().function_name());
+  const auto L = pretty_name.find("Enum = ") + 7;
+  const auto R = pretty_name.find_last_of(';');
+  return "enum " + std::string(pretty_name.substr(L, R - L)) + " : " +
+         type_name(std::type_identity<std::underlying_type_t<Enum>>{});
+}
+template <is_union Union>
+std::string type_name(std::type_identity<Union>) {
+  std::string_view pretty_name(std::source_location::current().function_name());
+  const auto L = pretty_name.find("Union = ") + 8;
+  const auto R = pretty_name.find_last_of(';');
+  return "union " + std::string(pretty_name.substr(L, R - L));
+}
 
-#define DBG_PRIMITIVE_TYPE_NAME(std_type, bit_type, bits) \
-  inline std::string type_name(type<std_type>) { return sizeof(std_type) * CHAR_BIT == bits ? #bit_type : #std_type; }
+#define DBG_PRIMITIVE_TYPE_NAME(std_type, bit_type, bits)               \
+  inline std::string type_name(std::type_identity<std_type>) {          \
+    return sizeof(std_type) * CHAR_BIT == bits ? #bit_type : #std_type; \
+  }
 DBG_PRIMITIVE_TYPE_NAME(signed char, int8_t, 8);
 DBG_PRIMITIVE_TYPE_NAME(unsigned char, uint8_t, 8);
 DBG_PRIMITIVE_TYPE_NAME(short, int16_t, 16);
@@ -144,11 +184,10 @@ DBG_PRIMITIVE_TYPE_NAME(long long, int64_t, 64);
 DBG_PRIMITIVE_TYPE_NAME(unsigned long long, uint64_t, 64);
 #undef DBG_PRIMITIVE_TYPE_NAME
 
-inline std::string type_name(type<std::any>) { return "std::any"; }
-inline std::string type_name(type<std::string>) { return "std::string"; }
-inline std::string type_name(type<std::string_view>) { return "std::string_view"; }
+inline std::string type_name(std::type_identity<std::any>) { return "std::any"; }
+inline std::string type_name(std::type_identity<std::string>) { return "std::string"; }
+inline std::string type_name(std::type_identity<std::string_view>) { return "std::string_view"; }
 
-// TODO 完美转发有什么问题
 template <typename T>
 std::string get_type_name() {
   if (std::is_volatile_v<T>) {
@@ -174,30 +213,12 @@ std::string get_type_name() {
   if (std::is_rvalue_reference_v<T>) {
     return get_type_name<std::remove_reference_t<T>>() + " &&";
   }
-  return type_name(type<T>{});  // thanks for ADL
-}
-
-template <typename Enum>
-std::enable_if_t<std::is_enum_v<Enum>, std::string> type_name(type<Enum>) {
-  std::string_view pretty_name(std::source_location::current().function_name());
-  const auto L = pretty_name.find("Enum = ") + 7;
-  const auto R = pretty_name.find_last_of(';');
-  std::string name(pretty_name.substr(L, R - L));
-  return "enum " + name + " : " + get_type_name<std::underlying_type_t<Enum>>();
-}
-
-template <typename Union>
-std::enable_if_t<std::is_union_v<Union>, std::string> type_name(type<Union>) {
-  std::string_view pretty_name(std::source_location::current().function_name());
-  const auto L = pretty_name.find("Union = ") + 8;
-  const auto R = pretty_name.find_last_of(';');
-  std::string name(pretty_name.substr(L, R - L));
-  return "union " + name;
+  return type_name(std::type_identity<T>{});
 }
 
 #define DBG_TEMPLATE_TYPE_NAME_1(std_type, temp, get_temp_type_name) \
   template <temp>                                                    \
-  inline std::string type_name(type<std_type<T>>) {                  \
+  inline std::string type_name(std::type_identity<std_type<T>>) {    \
     return #std_type "<" + get_temp_type_name + ">";                 \
   }
 DBG_TEMPLATE_TYPE_NAME_1(std::vector, typename T, get_type_name<T>());
@@ -219,7 +240,7 @@ DBG_TEMPLATE_TYPE_NAME_1(std::bitset, size_t T, std::to_string(T));
 
 #define DBG_TEMPLATE_TYPE_NAME_2(std_type, temp1, get_temp1_type_name, temp2, get_temp2_type_name) \
   template <temp1, temp2>                                                                          \
-  inline std::string type_name(type<std_type<T1, T2>>) {                                           \
+  inline std::string type_name(std::type_identity<std_type<T1, T2>>) {                             \
     return #std_type "<" + get_temp1_type_name + ", " + get_temp2_type_name + ">";                 \
   }
 DBG_TEMPLATE_TYPE_NAME_2(std::array, typename T1, get_type_name<T1>(), size_t T2, std::to_string(T2));
@@ -240,269 +261,159 @@ std::string type_list_to_string() {
   return result;
 }
 template <typename... T>
-std::string type_name(type<std::tuple<T...>>) {
+std::string type_name(std::type_identity<std::tuple<T...>>) {
   return "std::tuple<" + type_list_to_string<T...>() + ">";
 }
 template <typename... T>
-std::string type_name(type<std::variant<T...>>) {
+std::string type_name(std::type_identity<std::variant<T...>>) {
   return "std::variant<" + type_list_to_string<T...>() + ">";
 }
 
 template <typename T>
-inline std::string type_name(type<type<T>>) {
+std::string type_name(std::type_identity<std::type_identity<T>>) {
   return get_type_name<T>();
 }
 
-template <typename T, size_t N>
-std::string type_name(type<base<T, N>>) {
+template <std::integral T, size_t N>
+std::string type_name(std::type_identity<Base<T, N>>) {
   return get_type_name<T>();
 }
-
-namespace helper {
-template <class Default, class AlwaysVoid, template <class...> class Op, class... Args>
-struct detector {
-  using value_t = std::false_type;
-  using type = Default;
-};
-
-template <class Default, template <class...> class Op, class... Args>
-struct detector<Default, std::void_t<Op<Args...>>, Op, Args...> {
-  using value_t = std::true_type;
-  using type = Op<Args...>;
-};
-}  // namespace helper
-
-struct nonesuch {};
-
-template <template <class...> class Op, class... Args>
-using is_detected = typename helper::detector<nonesuch, void, Op, Args...>::value_t;
-
-template <template <class...> class Op, class... Args>
-constexpr bool is_detected_v = is_detected<Op, Args...>::value;
-
-template <typename T>
-using detect_begin_t = decltype(std::begin(std::declval<T>()));
-template <typename T>
-using detect_end_t = decltype(std::end(std::declval<T>()));
-template <typename T>
-using detect_size_t = decltype(std::size(std::declval<T>()));
-template <typename T>
-using detect_ostream_operator_t = decltype(std::declval<std::ostream &>() << std::declval<T>());
-
-template <typename T>
-constexpr bool is_container_v =
-    std::conjunction_v<is_detected<detect_begin_t, const T>, is_detected<detect_end_t, const T>,
-                       is_detected<detect_size_t, const T>, std::negation<std::is_same<std::string, std::decay_t<T>>>>;
-template <typename T>
-constexpr bool has_ostream_operator = is_detected_v<detect_ostream_operator_t, T>;
 
 namespace flatten {
 struct any_constructor {
-  std::size_t I;
-  // -Wreturn-type
-  template <typename T, typename = std::enable_if_t<!std::is_lvalue_reference<T>::value>>
-  operator T &&() const &&;
-
-  template <typename T, typename = std::enable_if_t<std::is_copy_constructible<T>::value>>
-  operator T &() const &;
+  template <typename T>
+  constexpr operator T &() const &noexcept;
+  template <typename T>
+  constexpr operator T &&() const &&noexcept;
 };
+template <size_t I>
+using indexed_any_constructor = any_constructor;
 
-struct class_detect {
-  template <typename T, typename = std::enable_if_t<std::is_class_v<T>>>
-  operator T &() const &;
+template <typename T, typename... U>
+concept aggregate_initializable = is_aggregate<T> && requires {
+  T{ { std::declval<U>() }... };
 };
+template <is_aggregate Aggregate, typename Indices>
+struct aggregate_initializable_from_indices;
+template <is_aggregate Aggregate, size_t... Indices>
+struct aggregate_initializable_from_indices<Aggregate, std::index_sequence<Indices...>>
+    : std::bool_constant<aggregate_initializable<Aggregate, indexed_any_constructor<Indices>...>> {};
+template <typename T, size_t N>
+concept aggregate_initializable_with_n_args =
+    is_aggregate<T> && aggregate_initializable_from_indices<T, std::make_index_sequence<N>>::value;
 
-template <typename T, std::size_t... I>
-constexpr auto constructible_nfields(std::index_sequence<I...>) noexcept -> decltype(T{ any_constructor{ I }... });
+template <is_aggregate T, size_t N, bool CanInitialize>
+struct aggregate_field_count : aggregate_field_count<T, N + 1, aggregate_initializable_with_n_args<T, N + 1>> {};
+template <is_aggregate T, size_t N>
+struct aggregate_field_count<T, N, false> : std::integral_constant<size_t, N - 1> {};
 
-template <typename T, std::size_t N, typename = decltype(constructible_nfields<T>(std::make_index_sequence<N>()))>
-using constructible_nfields_t = std::size_t;
+template <is_aggregate T>
+struct num_aggregate_fields : aggregate_field_count<T, 0, true> {};
+template <is_aggregate T>
+constexpr size_t num_aggregate_fields_v = num_aggregate_fields<T>::value;
 
-template <typename T, std::size_t... I1, std::size_t... I2>
-constexpr auto constructible_nfields_margs(std::index_sequence<I1...>, std::index_sequence<I2...>) noexcept
-    -> decltype(T{ any_constructor{ I1 }..., { any_constructor{ I2 }... } });
-
-template <typename T, std::size_t N, std::size_t M,
-          typename =
-              decltype(constructible_nfields_margs<T>(std::make_index_sequence<N>(), std::make_index_sequence<M>()))>
-using constructible_nfields_margs_t = std::size_t;
-
-template <typename T, std::size_t... I>
-constexpr auto constructible_nfields_class(std::index_sequence<I...>) noexcept
-    -> decltype(T{ any_constructor{ I }..., class_detect{} });
-
-template <typename T, std::size_t N, typename = decltype(constructible_nfields_class<T>(std::make_index_sequence<N>()))>
-using constructible_nfields_class_t = bool;
-
-template <typename T, std::size_t I0, std::size_t... I>
-constexpr auto specific_fields_class_detect(std::index_sequence<I0, I...>) noexcept
-    -> constructible_nfields_class_t<T, sizeof...(I)> {
-  return true;
-}
-
-template <typename T, std::size_t... I>
-constexpr bool specific_fields_class_detect(std::index_sequence<I...>) noexcept {
-  return false;
-}
-
-template <typename T, std::size_t I0, std::size_t... I>
-constexpr auto fields_count(std::index_sequence<I0, I...>) noexcept -> constructible_nfields_t<T, sizeof...(I) + 1> {
-  return sizeof...(I) + 1;  // I0 + ...I
-}
-
-template <typename T, std::size_t... I>
-constexpr std::size_t fields_count(std::index_sequence<I...>) noexcept {
-  if constexpr (sizeof...(I) > 0) {
-    return fields_count<T>(std::make_index_sequence<sizeof...(I) - 1>{});
-  } else {
-    return 0;
-  }
-}
-
-template <typename T, std::size_t N, std::size_t I0, std::size_t... I>
-constexpr auto specific_fields_count(std::index_sequence<I0, I...>) noexcept
-    -> constructible_nfields_margs_t<T, N, sizeof...(I) + 1> {
-  return sizeof...(I) + 1;  // I0 + ...I
-}
-
-template <typename T, std::size_t N, std::size_t... I>
-constexpr std::size_t specific_fields_count(std::index_sequence<I...>) noexcept {
-  return specific_fields_count<T, N>(std::make_index_sequence<sizeof...(I) - 1>{});
-}
-
-template <typename T>
-constexpr std::size_t counter_impl() noexcept {
-  return fields_count<T>(std::make_index_sequence<sizeof(T)>{});
-}
-
-template <typename T, std::size_t N>
-constexpr std::size_t specific_counter_impl() noexcept {
-  return specific_fields_count<T, N>(std::make_index_sequence<sizeof(T) + 1>{});  // ! notice + 1
-}
-
-template <typename T, std::size_t cur_field, std::size_t total_fields>
-constexpr std::size_t unique_fields_count(std::size_t unique_fields) noexcept {
-  if constexpr (cur_field == total_fields) {
-    return unique_fields;
-  } else if constexpr ((specific_fields_class_detect<T>(std::make_index_sequence<cur_field + 1>{}))) {
-    return unique_fields_count<T, cur_field + 1, total_fields>(unique_fields + 1);
-  } else {
-    return unique_fields_count<T, cur_field + specific_counter_impl<T, cur_field>(), total_fields>(unique_fields + 1);
-  }
-}
-
-template <typename T>
-constexpr std::size_t unique_counter_impl() noexcept {
-  return unique_fields_count<T, 0, counter_impl<T>()>(0);
-}
-
-// begin auto generate code
-template <typename T>
-constexpr auto flatten_impl(const T &t, std::integral_constant<std::size_t, 0> N1) noexcept {
+// Begin generated code by `python utils/gen_flatten.py 16`
+template <is_aggregate Aggregate>
+constexpr auto flatten_impl(const Aggregate &t, std::integral_constant<size_t, 0> N1) noexcept {
   return std::forward_as_tuple();
 }
-
-template <typename T>
-constexpr auto flatten_impl(const T &t, std::integral_constant<std::size_t, 1> N1) noexcept {
+template <is_aggregate Aggregate>
+constexpr auto flatten_impl(const Aggregate &t, std::integral_constant<size_t, 1> N1) noexcept {
   auto &[f1] = t;
   return std::forward_as_tuple(f1);
 }
-template <typename T>
-constexpr auto flatten_impl(const T &t, std::integral_constant<std::size_t, 2> N1) noexcept {
+template <is_aggregate Aggregate>
+constexpr auto flatten_impl(const Aggregate &t, std::integral_constant<size_t, 2> N1) noexcept {
   auto &[f1, f2] = t;
   return std::forward_as_tuple(f1, f2);
 }
-template <typename T>
-constexpr auto flatten_impl(const T &t, std::integral_constant<std::size_t, 3> N1) noexcept {
+template <is_aggregate Aggregate>
+constexpr auto flatten_impl(const Aggregate &t, std::integral_constant<size_t, 3> N1) noexcept {
   auto &[f1, f2, f3] = t;
   return std::forward_as_tuple(f1, f2, f3);
 }
-template <typename T>
-constexpr auto flatten_impl(const T &t, std::integral_constant<std::size_t, 4> N1) noexcept {
+template <is_aggregate Aggregate>
+constexpr auto flatten_impl(const Aggregate &t, std::integral_constant<size_t, 4> N1) noexcept {
   auto &[f1, f2, f3, f4] = t;
   return std::forward_as_tuple(f1, f2, f3, f4);
 }
-template <typename T>
-constexpr auto flatten_impl(const T &t, std::integral_constant<std::size_t, 5> N1) noexcept {
+template <is_aggregate Aggregate>
+constexpr auto flatten_impl(const Aggregate &t, std::integral_constant<size_t, 5> N1) noexcept {
   auto &[f1, f2, f3, f4, f5] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5);
 }
-template <typename T>
-constexpr auto flatten_impl(const T &t, std::integral_constant<std::size_t, 6> N1) noexcept {
+template <is_aggregate Aggregate>
+constexpr auto flatten_impl(const Aggregate &t, std::integral_constant<size_t, 6> N1) noexcept {
   auto &[f1, f2, f3, f4, f5, f6] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5, f6);
 }
-template <typename T>
-constexpr auto flatten_impl(const T &t, std::integral_constant<std::size_t, 7> N1) noexcept {
+template <is_aggregate Aggregate>
+constexpr auto flatten_impl(const Aggregate &t, std::integral_constant<size_t, 7> N1) noexcept {
   auto &[f1, f2, f3, f4, f5, f6, f7] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7);
 }
-template <typename T>
-constexpr auto flatten_impl(const T &t, std::integral_constant<std::size_t, 8> N1) noexcept {
+template <is_aggregate Aggregate>
+constexpr auto flatten_impl(const Aggregate &t, std::integral_constant<size_t, 8> N1) noexcept {
   auto &[f1, f2, f3, f4, f5, f6, f7, f8] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8);
 }
-template <typename T>
-constexpr auto flatten_impl(const T &t, std::integral_constant<std::size_t, 9> N1) noexcept {
+template <is_aggregate Aggregate>
+constexpr auto flatten_impl(const Aggregate &t, std::integral_constant<size_t, 9> N1) noexcept {
   auto &[f1, f2, f3, f4, f5, f6, f7, f8, f9] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9);
 }
-template <typename T>
-constexpr auto flatten_impl(const T &t, std::integral_constant<std::size_t, 10> N1) noexcept {
+template <is_aggregate Aggregate>
+constexpr auto flatten_impl(const Aggregate &t, std::integral_constant<size_t, 10> N1) noexcept {
   auto &[f1, f2, f3, f4, f5, f6, f7, f8, f9, f10] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10);
 }
-template <typename T>
-constexpr auto flatten_impl(const T &t, std::integral_constant<std::size_t, 11> N1) noexcept {
+template <is_aggregate Aggregate>
+constexpr auto flatten_impl(const Aggregate &t, std::integral_constant<size_t, 11> N1) noexcept {
   auto &[f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11);
 }
-template <typename T>
-constexpr auto flatten_impl(const T &t, std::integral_constant<std::size_t, 12> N1) noexcept {
+template <is_aggregate Aggregate>
+constexpr auto flatten_impl(const Aggregate &t, std::integral_constant<size_t, 12> N1) noexcept {
   auto &[f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12);
 }
-template <typename T>
-constexpr auto flatten_impl(const T &t, std::integral_constant<std::size_t, 13> N1) noexcept {
+template <is_aggregate Aggregate>
+constexpr auto flatten_impl(const Aggregate &t, std::integral_constant<size_t, 13> N1) noexcept {
   auto &[f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13);
 }
-template <typename T>
-constexpr auto flatten_impl(const T &t, std::integral_constant<std::size_t, 14> N1) noexcept {
+template <is_aggregate Aggregate>
+constexpr auto flatten_impl(const Aggregate &t, std::integral_constant<size_t, 14> N1) noexcept {
   auto &[f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14);
 }
-template <typename T>
-constexpr auto flatten_impl(const T &t, std::integral_constant<std::size_t, 15> N1) noexcept {
+template <is_aggregate Aggregate>
+constexpr auto flatten_impl(const Aggregate &t, std::integral_constant<size_t, 15> N1) noexcept {
   auto &[f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15);
 }
-template <typename T>
-constexpr auto flatten_impl(const T &t, std::integral_constant<std::size_t, 16> N1) noexcept {
+template <is_aggregate Aggregate>
+constexpr auto flatten_impl(const Aggregate &t, std::integral_constant<size_t, 16> N1) noexcept {
   auto &[f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16] = t;
   return std::forward_as_tuple(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16);
 }
-// end auto generate code
-template <typename T, std::size_t N>
-constexpr auto flatten_impl(const T &t, std::integral_constant<std::size_t, N> N1) noexcept {
-  config::get_stream() << printer::error_print("Please rerun utils/generate.py to generate more binds!");
+template <is_aggregate Aggregate, size_t N>
+constexpr auto flatten_impl(const Aggregate &t, std::integral_constant<size_t, N> N1) noexcept {
+  config::get_stream() << printer::error_print("Please rerun utils/gen_flatten.py to generate more binds!");
   return std::forward_as_tuple();
 }
+// End generated code
 
-template <typename T>
-constexpr auto flatten_to_tuple(const T &t) noexcept {
-  return flatten_impl(t, std::integral_constant<std::size_t, unique_counter_impl<T>()>());
+template <is_aggregate Aggregate>
+constexpr auto flatten_to_tuple(const Aggregate &t) noexcept {
+  return flatten_impl(t, std::integral_constant<size_t, num_aggregate_fields_v<Aggregate>>());
 }
 }  // namespace flatten
 
 namespace printer {
-template <typename T>
-std::enable_if_t<has_ostream_operator<T>, void> print_impl(std::ostream &os, const T &value) {
+template <has_ostream_operator T>
+void print_impl(std::ostream &os, const T &value) {
   os << value;
-}
-template <typename T>
-std::enable_if_t<!has_ostream_operator<T>, void> print_impl(std::ostream &os, const T &) {
-  os << printer::error_print("This type does not support the << ostream operator!");
 }
 inline void print_impl(std::ostream &os, const char &value) {
   if (std::isprint(value)) {
@@ -515,41 +426,64 @@ inline void print_impl(std::ostream &os, const char &value) {
 }
 
 template <typename T>
-std::enable_if_t<!is_container_v<T> && !std::is_enum_v<T> && !std::is_aggregate_v<T>, void> print(std::ostream &os,
-                                                                                                  const T &value) {
+void print(std::ostream &os, const T &value) {
   print_impl(os, value);
 }
 
-// forward declaration for print
-template <typename Enum>
-std::enable_if_t<std::is_enum_v<Enum>, void> print(std::ostream &os, const Enum &value);
-template <typename Container>
-std::enable_if_t<is_container_v<Container>, void> print(std::ostream &os, const Container &value);
-template <typename Aggregate>
-std::enable_if_t<std::is_aggregate_v<Aggregate> && !is_container_v<Aggregate>, void> print(std::ostream &os,
-                                                                                           const Aggregate &value);
+inline void print(std::ostream &os, const std::string &value) {
+  os << '"';
+  for (const auto &c : value) print_impl(os, c);
+  os << '"';
+}
+inline void print(std::ostream &os, const std::string_view &value) { print(os, std::string(value)); }
+inline void print(std::ostream &os, const char *const &value) { print(os, std::string(value)); }
+
+inline void print(std::ostream &os, const char &value) {
+  os << "'";
+  print_impl(os, value);
+  os << "'";
+}
+
+inline void print(std::ostream &os, const signed char &value) { os << +value; }
+inline void print(std::ostream &os, const unsigned char &value) { os << +value; }
+
+inline void print(std::ostream &os, const bool &value) { os << std::boolalpha << value << std::noboolalpha; }
+
+inline void print(std::ostream &os, const std::nullptr_t &value) { os << "nullptr"; }
+
+inline void print(std::ostream &os, const std::nullopt_t &value) { os << "nullopt"; }
+
+template <typename T, size_t N>
+void print(std::ostream &os, const Base<T, N> &value) {
+  if constexpr (N == 2) {
+    os << "0b" << std::bitset<sizeof(T) * CHAR_BIT>(value.val_);
+  } else {
+    std::ostringstream oss;
+    if constexpr (N == 8)
+      oss << std::oct << "0o";
+    else if constexpr (N == 16)
+      oss << std::hex << "0x";
+    oss << std::setw(sizeof(T)) << std::setfill('0');
+    oss << std::uppercase << +value.val_;
+    os << oss.str();
+  }
+}
+
+// Begin forward declaration of print
+template <is_enum Enum>
+void print(std::ostream &os, const Enum &value);
+template <is_container Container>
+void print(std::ostream &os, const Container &value);
+template <is_aggregate Aggregate>
+requires(!is_container<Aggregate>) void print(std::ostream &os, const Aggregate &value);
 template <typename... Ts>
 void print(std::ostream &os, const std::tuple<Ts...> &value);
 template <>
 inline void print(std::ostream &os, const std::tuple<> &);
-inline void print(std::ostream &os, const std::string &value);
-inline void print(std::ostream &os, const std::string_view &value);
-inline void print(std::ostream &os, const char *const &value);
-inline void print(std::ostream &os, const char &value);
-inline void print(std::ostream &os, const signed char &value);
-inline void print(std::ostream &os, const unsigned char &value);
-inline void print(std::ostream &os, const std::nullptr_t &value);
-inline void print(std::ostream &os, const std::nullopt_t &value);
 template <typename T1, typename T2>
 void print(std::ostream &os, const std::pair<T1, T2> &value);
 template <typename T>
 void print(std::ostream &os, T *const &value);
-template <>
-inline void print(std::ostream &os, char *const &value);
-template <>
-inline void print(std::ostream &os, signed char *const &value);
-template <>
-inline void print(std::ostream &os, unsigned char *const &value);
 template <typename T>
 void print(std::ostream &os, const std::optional<T> &value);
 template <typename T, typename Deleter>
@@ -558,23 +492,21 @@ template <typename T>
 void print(std::ostream &os, const std::shared_ptr<T> &value);
 template <typename... Ts>
 void print(std::ostream &os, const std::variant<Ts...> &value);
-template <typename T>
-void print(std::ostream &os, const std::stack<T> &value);
-template <typename T>
-void print(std::ostream &os, const std::queue<T> &value);
-template <typename T>
-void print(std::ostream &os, const std::priority_queue<T> &value);
-template <typename T, size_t N>
-void print(std::ostream &os, const base<T, N> &value);
-// end of forward declaration for print
+template <typename T, typename C>
+void print(std::ostream &os, const std::stack<T, C> &value);
+template <typename T, typename C>
+void print(std::ostream &os, const std::queue<T, C> &value);
+template <typename T, typename C, typename Cmp>
+void print(std::ostream &os, const std::priority_queue<T, C, Cmp> &value);
+// End forward declaration of print
 
-template <typename Enum>
-std::enable_if_t<std::is_enum_v<Enum>, void> print(std::ostream &os, const Enum &value) {
+template <is_enum Enum>
+void print(std::ostream &os, const Enum &value) {
   print(os, static_cast<std::underlying_type_t<Enum>>(value));
 }
 
-template <typename Container>
-std::enable_if_t<is_container_v<Container>, void> print(std::ostream &os, const Container &value) {
+template <is_container Container>
+void print(std::ostream &os, const Container &value) {
   os << "[";
   const size_t size = std::size(value);
   const size_t n = std::min(config::container_length(), size);
@@ -592,9 +524,8 @@ std::enable_if_t<is_container_v<Container>, void> print(std::ostream &os, const 
   os << "]";
 }
 
-template <typename Aggregate>
-std::enable_if_t<std::is_aggregate_v<Aggregate> && !is_container_v<Aggregate>, void> print(std::ostream &os,
-                                                                                           const Aggregate &value) {
+template <is_aggregate Aggregate>
+requires(!is_container<Aggregate>) void print(std::ostream &os, const Aggregate &value) {
   print(os, flatten::flatten_to_tuple(value));
 }
 
@@ -621,31 +552,9 @@ void print(std::ostream &os, const std::tuple<Ts...> &value) {
   os << "}";
 }
 template <>
-inline void print(std::ostream &os, const std::tuple<> &) {
+void print(std::ostream &os, const std::tuple<> &) {
   os << "{}";
 }
-
-inline void print(std::ostream &os, const std::string &value) {
-  os << '"';
-  for (const auto &c : value) print_impl(os, c);
-  os << '"';
-}
-inline void print(std::ostream &os, const std::string_view &value) { print(os, std::string(value)); }
-inline void print(std::ostream &os, const char *const &value) { print(os, std::string(value)); }
-
-inline void print(std::ostream &os, const bool &value) { os << std::boolalpha << value << std::noboolalpha; }
-
-inline void print(std::ostream &os, const char &value) {
-  os << "'";
-  print_impl(os, value);
-  os << "'";
-}
-inline void print(std::ostream &os, const signed char &value) { os << +value; }
-inline void print(std::ostream &os, const unsigned char &value) { os << +value; }
-
-inline void print(std::ostream &os, const std::nullptr_t &value) { os << "nullptr"; }
-
-inline void print(std::ostream &os, const std::nullopt_t &value) { os << "nullopt"; }
 
 template <typename T>
 void print(std::ostream &os, T *const &value) {
@@ -656,24 +565,21 @@ void print(std::ostream &os, T *const &value) {
   }
 }
 
-template <>
-void print(std::ostream &os, char *const &value) {
+inline void print(std::ostream &os, char *const &value) {
   if (value == nullptr) {
     print(os, nullptr);
   } else {
     os << reinterpret_cast<int *>(value);
   }
 }
-template <>
-void print(std::ostream &os, signed char *const &value) {
+inline void print(std::ostream &os, signed char *const &value) {
   if (value == nullptr) {
     print(os, nullptr);
   } else {
     os << reinterpret_cast<int *>(value);
   }
 }
-template <>
-void print(std::ostream &os, unsigned char *const &value) {
+inline void print(std::ostream &os, unsigned char *const &value) {
   if (value == nullptr) {
     print(os, nullptr);
   } else {
@@ -719,8 +625,8 @@ void print(std::ostream &os, const std::variant<Ts...> &value) {
   os << "}";
 }
 
-template <typename T>
-void print(std::ostream &os, const std::stack<T> &value) {
+template <typename T, typename C>
+void print(std::ostream &os, const std::stack<T, C> &value) {
   auto stk = value;
 
   os << "[";
@@ -743,8 +649,8 @@ void print(std::ostream &os, const std::stack<T> &value) {
   }
   os << "]";
 }
-template <typename T>
-void print(std::ostream &os, const std::queue<T> &value) {
+template <typename T, typename C>
+void print(std::ostream &os, const std::queue<T, C> &value) {
   auto que = value;
 
   os << "[";
@@ -763,16 +669,16 @@ void print(std::ostream &os, const std::queue<T> &value) {
   }
   os << "]";
 }
-template <typename T>
-void print(std::ostream &os, const std::priority_queue<T> &value) {
-  auto pque = value;
+template <typename T, typename C, typename Cmp>
+void print(std::ostream &os, const std::priority_queue<T, C, Cmp> &value) {
+  auto pq = value;
 
   os << "[";
   const size_t size = std::size(value);
   const size_t n = std::min(config::container_length(), size);
   for (auto i = 0; i < n; i++) {
-    print(os, pque.top());
-    pque.pop();
+    print(os, pq.top());
+    pq.pop();
     if (i != n - 1) {
       os << ", ";
     }
@@ -783,34 +689,14 @@ void print(std::ostream &os, const std::priority_queue<T> &value) {
   }
   os << "]";
 }
-
-template <typename T, size_t N>
-void print(std::ostream &os, const base<T, N> &value) {
-  if constexpr (N == 2) {
-    os << "0b" << std::bitset<sizeof(T) * CHAR_BIT>(value.val_);
-  } else {
-    std::ostringstream oss;
-    if constexpr (N == 8)
-      oss << std::oct << "0o";
-    else if constexpr (N == 16)
-      oss << std::hex << "0x";
-    oss << std::setw(sizeof(T)) << std::setfill('0');
-    oss << std::uppercase << +value.val_;
-    os << oss.str();
-  }
-}
 }  // namespace printer
 
-template <typename T, typename... U>
+template <typename... Ts>
 struct last {
-  using type = typename last<U...>::type;
+  using type = typename decltype((std::type_identity<Ts>{}, ...))::type;
 };
-template <typename T>
-struct last<T> {
-  using type = T;
-};
-template <typename... T>
-using last_t = typename last<T...>::type;
+template <typename... Ts>
+using last_t = typename last<Ts...>::type;
 
 class Debugger {
  public:
@@ -851,14 +737,15 @@ class Debugger {
     return value;
   }
   template <typename T>
-  type<T> &&print_impl(const std::string *, const std::string *type_name_iter, type<T> &&value) {
+  std::type_identity<T> &&print_impl(const std::string *, const std::string *type_name_iter,
+                                     std::type_identity<T> &&value) {
     os_ << (printer::location_print(location_) + ' ' +
             printer::type_print(*type_name_iter + " [sizeof " + std::to_string(sizeof(T)) + "]") + '\n');
-    return std::forward<type<T>>(value);
+    return std::forward<std::type_identity<T>>(value);
   }
   template <typename T, typename... U>
   auto print_impl(const std::string *expr_iter, const std::string *type_name_iter, T &&value, U &&...rest)
-      -> last_t<U...> {
+      -> last_t<T, U...> {
     print_impl(expr_iter, type_name_iter, std::forward<T>(value));
     return print_impl(expr_iter + 1, type_name_iter + 1, std::forward<U>(rest)...);
   }
@@ -870,7 +757,7 @@ class Debugger {
 };
 }  // namespace dbg
 
-// begin generated code by utils/gen_macro.py 16
+// Begin generated code by `python utils/gen_macro.py 16`
 #define _DBG_CONCAT(x, y) x##y
 #define _DBG_CONCAT_HELPER(x, y) _DBG_CONCAT(x, y)
 #define _DBG_GET_NTH_ARG(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, N, ...) N
@@ -914,9 +801,9 @@ class Debugger {
   _DBG_APPLY_HELPER(_DBG_CONCAT_HELPER(_DBG_APPLY_F, _DBG_COUNT_ARGS(__VA_ARGS__)), f, __VA_ARGS__)
 #define _DBG_FOR_EACH_WITH_COMMA(f, ...) \
   _DBG_APPLY_HELPER(_DBG_CONCAT_HELPER(_DBG_APPLY_WITH_COMMA_F, _DBG_COUNT_ARGS(__VA_ARGS__)), f, __VA_ARGS__)
-// end generated code
+// End generated code
 
-#define _DBG_GET_EXPR(x) static_cast<std::string>(#x)
+#define _DBG_GET_EXPR(x) std::string(#x)
 #define _DBG_GET_TYPE(x) dbg::get_type_name<decltype(x)>()
 
 #define DBG(...)                                                                  \
