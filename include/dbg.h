@@ -138,16 +138,15 @@ concept is_iteratable = requires(const T &t) {
   std::size(t);
 };
 template <typename T>
-concept has_ostream_operator = requires(std::ostream &os, const T &t) {
-  os << t;
-};
+concept has_ostream_operator = requires(std::ostream &os, const T &t) { os << t; };
 template <typename T>
 concept is_container = is_iteratable<T> && !std::same_as<std::decay_t<T>, std::string>;
 
 namespace detail {
 // Ignore explicitly specified template arguments
 template <int &...ExplicitArgumentBarrier, typename T>
-requires(!std::is_enum_v<T> && !std::is_union_v<T>) std::string type_name(std::type_identity<T>) {
+  requires(!std::is_enum_v<T> && !std::is_union_v<T>)
+std::string type_name(std::type_identity<T>) {
   std::string_view pretty_name(std::source_location::current().function_name());
   const auto L = pretty_name.find("T = ") + 4;
 #if defined(__clang__)
@@ -298,17 +297,15 @@ std::string type_name(std::type_identity<Base<N, T>>) {
 namespace flatten {
 struct any_constructor {
   template <typename T>
-  constexpr operator T &() const &noexcept;
+  constexpr operator T &() const & noexcept;
   template <typename T>
-  constexpr operator T &&() const &&noexcept;
+  constexpr operator T &&() const && noexcept;
 };
 template <size_t I>
 using indexed_any_constructor = any_constructor;
 
 template <typename T, typename... U>
-concept aggregate_initializable = is_aggregate<T> && requires {
-  T{ { std::declval<U>() }... };
-};
+concept aggregate_initializable = is_aggregate<T> && requires { T{ { std::declval<U>() }... }; };
 template <is_aggregate Aggregate, typename Indices>
 struct aggregate_initializable_from_indices;
 template <is_aggregate Aggregate, size_t... Indices>
@@ -492,7 +489,8 @@ void print(std::ostream &os, const Enum &value);
 template <is_container Container>
 void print(std::ostream &os, const Container &value);
 template <is_aggregate Aggregate>
-requires(!is_container<Aggregate>) void print(std::ostream &os, const Aggregate &value);
+  requires(!is_container<Aggregate>)
+void print(std::ostream &os, const Aggregate &value);
 template <typename... Ts>
 void print(std::ostream &os, const std::tuple<Ts...> &value);
 template <>
@@ -589,7 +587,8 @@ struct print_named_tuple<Aggregate, 0> {
 #endif
 
 template <is_aggregate Aggregate>
-requires(!is_container<Aggregate>) void print(std::ostream &os, const Aggregate &value) {
+  requires(!is_container<Aggregate>)
+void print(std::ostream &os, const Aggregate &value) {
   const auto &tuple = flatten::flatten_to_tuple(value);
 #if __has_builtin(__builtin_dump_struct) && defined(__clang_major__) && __clang_major__ >= 15
   detail::ReflectField<Aggregate>::initialize(value);
