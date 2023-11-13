@@ -7,6 +7,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace gdb {
@@ -36,13 +37,31 @@ inline bool being_traced() {
   return false;
 }
 
+class GdbCommand {
+ public:
+  static GdbCommand bt() { return GdbCommand("backtrace"); }
+
+  static GdbCommand c() { return GdbCommand("continue"); }
+
+  static GdbCommand mappings() { return GdbCommand("info proc mappings"); }
+
+  static GdbCommand locals() { return GdbCommand("info locals"); }
+
+  std::string_view command() const { return command_; }
+
+ private:
+  explicit GdbCommand(const std::string &command) : command_(command) {}
+
+  std::string command_;
+};
+
 /**
  * @return int the GDB status. This is to avoid this function appearing in the stack frame.
  * @retval <0 indicates an error.
  *          0 indicates that GDB is attached, and a breakpoint needs to be set later.
  *         >0 indicate that GDB is running in batch mode, and we need to wait for it later.
  */
-inline int ensure_gdb_attached(const std::initializer_list<std::string> &commands) {
+inline int ensure_gdb_attached(const std::initializer_list<GdbCommand> &commands) {
   static int pid = 0;
   if (!which_gdb()) {
     std::cerr << "[gdb.h] gdb is not found in your env!\n";
@@ -51,9 +70,9 @@ inline int ensure_gdb_attached(const std::initializer_list<std::string> &command
   if (being_traced()) {
     if (pid > 0) {
       if (commands.size()) {
-        std::cerr << "[gdb.h] gdb is already running. commands: {";
+        std::cerr << "[gdb.h] gdb is already running! commands: {";
         for (auto iter = commands.begin(); iter != commands.end(); iter++) {
-          std::cerr << *iter;
+          std::cerr << iter->command();
           if (std::next(iter) != commands.end()) std::cerr << ", ";
         }
         std::cerr << "} are ignored.\n";
@@ -72,12 +91,13 @@ inline int ensure_gdb_attached(const std::initializer_list<std::string> &command
     std::ostringstream oss;
     oss << "--pid=" << ppid;
     if (commands.size()) {
+      dup2(2, 1);  // redirect stdout to stderr
       std::vector<const char *> argv;
       argv.push_back("gdb");
       argv.push_back("--batch");
       for (auto iter = commands.begin(); iter != commands.end(); iter++) {
         argv.push_back("-ex");
-        argv.push_back(iter->c_str());
+        argv.push_back(iter->command().data());
       }
       argv.push_back(oss.str().c_str());
       argv.push_back(nullptr);

@@ -1,10 +1,10 @@
 #include "gdb.h"
 
-void g() { BREAKPOINT("bt"); }
+void g() { BREAKPOINT(gdb::GdbCommand::bt()); }
 
 void f() {
   g();
-  BREAKPOINT("bt");
+  BREAKPOINT(gdb::GdbCommand::bt(), gdb::GdbCommand::mappings());
 }
 
 int main() {
