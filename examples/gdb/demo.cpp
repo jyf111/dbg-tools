@@ -1,10 +1,10 @@
 #include "gdb.h"
 
-void g() { BREAKPOINT(); }
+void g() { BREAKPOINT("bt"); }
 
 void f() {
   g();
-  BREAKPOINT();
+  BREAKPOINT("bt");
 }
 
 int main() {
