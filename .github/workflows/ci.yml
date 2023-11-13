@@ -39,4 +39,5 @@ jobs:
           cmake -B build -S . -DENABLE_TESTS=ON -DBUILD_EXAMPLES=on -DCMAKE_CXX_COMPILER=${{ matrix.job.compiler }}
           cmake --build build
           cmake --build build --target test
-          build/examples/demo
+          build/examples/dbg/dbg_demo
+          build/examples/gdb/gdb_demo

@@ -541,7 +541,7 @@ void print(std::ostream &os, const Container &value) {
   os << "]";
 }
 
-#if __has_builtin(__builtin_dump_struct) && __clang_major__ >= 15
+#if __has_builtin(__builtin_dump_struct) && defined(__clang_major__) && __clang_major__ >= 15
 namespace detail {
 template <is_aggregate Aggregate>
 struct ReflectField {
@@ -591,7 +591,7 @@ struct print_named_tuple<Aggregate, 0> {
 template <is_aggregate Aggregate>
 requires(!is_container<Aggregate>) void print(std::ostream &os, const Aggregate &value) {
   const auto &tuple = flatten::flatten_to_tuple(value);
-#if __has_builtin(__builtin_dump_struct) && __clang_major__ >= 15
+#if __has_builtin(__builtin_dump_struct) && defined(__clang_major__) && __clang_major__ >= 15
   detail::ReflectField<Aggregate>::initialize(value);
   os << "{";
   constexpr size_t tuple_size = std::tuple_size_v<std::remove_cvref_t<decltype(tuple)>>;

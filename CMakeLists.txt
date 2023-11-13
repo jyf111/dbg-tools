@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.10)
 
 project(dbg_tools LANGUAGES CXX)
 
@@ -33,13 +33,14 @@ if (ENABLE_TESTS)
   enable_testing()
 endif()
 
-# examples
-if (BUILD_EXAMPLES)
-  add_subdirectory(examples)
-endif()
-
 # install
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME})
+
+# examples
+if (BUILD_EXAMPLES)
+  add_subdirectory(examples/dbg)
+  add_subdirectory(examples/gdb)
+endif()
 
 # clang-format target
 file(GLOB_RECURSE
