@@ -131,7 +131,7 @@ inline int ensure_gdb_attached(const std::initializer_list<GdbCommand> &commands
 }
 }  // namespace gdb
 
-#define BREAKPOINT(...)                                                                \
+#define GDB(...)                                                                       \
   do {                                                                                 \
     if (int gdb_status = gdb::ensure_gdb_attached({ __VA_ARGS__ }); gdb_status == 0) { \
       __asm__ volatile("int $0x03");                                                   \

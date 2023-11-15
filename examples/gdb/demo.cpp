@@ -1,11 +1,11 @@
 #include "gdb.h"
 
-void g() { BREAKPOINT(); }
+void g() { GDB(); }
 
 void f() {
   g();
   int x = 1;
-  BREAKPOINT(gdb::GdbCommand::bt(), gdb::GdbCommand::locals());
+  GDB(gdb::GdbCommand::bt(), gdb::GdbCommand::locals());
 }
 
 int main() {
