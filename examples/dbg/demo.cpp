@@ -1,19 +1,6 @@
 #include "dbg.h"
-struct data {
-  int a, b, c;
-  std::string d;
-  int arr[3];
-  struct dir {
-    int d[4] = { 1, -1, 2, -2 };
-  };
-  dir dr;
-};
-struct Bad {
-  int x, y;
-  std::initializer_list<int> z;
-};
-DBG_REGISTER(Bad, x, y, z);
-struct MyStruct {
+
+struct Data {
   struct gps {
     double latitude;
     double longitude;
@@ -32,71 +19,39 @@ struct MyStruct {
     format format;
   };
   image thumbnail;
+
+  struct dir {
+    int d[4] = { 1, -1, 2, -2 };
+  };
+  dir direction;
 };
-int gg;
-struct MyStruct3 {
-  int a;
-  float b;
-  std::string c;
-  int arr[5];
-} s3{ 0, 1., "23" };
-MyStruct s{ { 41.13, -73.70 }, { 480, 340, "https://foo/bar/baz.jpg", { MyStruct::image::format::type::yuyv_422 } } };
+
+struct ComplexData {
+  ComplexData(int &x, double y) : x(x), y(y) {}
+  int &x;
+  double y;
+};
+DBG_REGISTER(ComplexData, x, y);
+
 int main() {
   int a = 2;
-  short b = 3;
-  long long x = 7;
+  long long b = 7;
   int &ref = a;
-  long &&rref = 4l;
-  data d{ 1, 2, 3, "hello", { 6, 0, 8 } };
-  DBG(a, b, x);
-  DBG(ref, rref);
+  const long &&rref = 42l;
+  DBG(a, b, ref, rref);
+  DBG((std::vector<int>{ 1, 2, 3, 4, 5 }));
+  Data d{ { 41.13, -73.70 }, { 480, 340, "https://foo/bar/baz.jpg", { Data::image::format::type::yuyv_422 } } };
   DBG(d);
-  std::deque<int> dq{ 1, 2 };
-  DBG(dq);
-  DBG((std::vector<int>{ 1, 2 }));
-  std::stack<int> stk;
-  stk.push(1);
-  DBG(stk);
-  std::valarray<int> g = { 1, 2 };
-  DBG(g);
-  std::any aa = 1;
-  union gb_union {
-    int x;
-    short y;
-  } gg;
-  enum class color : char { RED = 1, BLUE = 2 };
-  color c = color::RED;
-  DBG(c);
-  std::tuple<int, double> tp = { 1, 2. };
-  DBG(tp);
-  std::byte bb{ 1 };
-  DBG(bb);
-  uint8_t ttt = 1;
-  DBG(ttt);
-  DBG(true);
-  DBG(std::type_identity<char[2][3][4]>());
-  DBG("This is a message");
-  DBG(std::string("This is a string"));
-  const char *msg = "MMMM";
-  DBG(msg);
-  const char *xxxx[] = { "111", "222", "333" };
-  DBG(xxxx);
-  int y = DBG(x) + 2;
+  DBG(ComplexData(a, 2.));
+  DBG("Notice here!");
   const int32_t A = 2;
   const int32_t B = DBG(3 * A) + 1;
-  DBG(B);
-  DBG(s);
-  Bad bad = { 2, 5 };
-  DBG(bad);
-  DBG();
-  DBG(s3);
+  DBG(dbg::bin(A), dbg::hex(B));
   std::priority_queue<int, std::vector<int>, std::greater<int>> pq;
   pq.push(2);
   pq.push(1);
   DBG(pq);
-  std::vector<Bad> bads;
-  bads.push_back({ 1, 2 });
-  bads.push_back(bad);
-  DBG(bads);
+  char c[2][3][4];
+  DBG(std::type_identity<decltype(c)>());
   return 0;
 }

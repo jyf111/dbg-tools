@@ -43,7 +43,11 @@ class GdbCommand {
 
   static GdbCommand c() { return GdbCommand("continue"); }
 
+  static GdbCommand frame(size_t i) { return GdbCommand("frame " + std::to_string(i)); }
+
   static GdbCommand mappings() { return GdbCommand("info proc mappings"); }
+
+  static GdbCommand registers() { return GdbCommand("info registers"); }
 
   static GdbCommand locals() { return GdbCommand("info locals"); }
 
@@ -51,6 +55,7 @@ class GdbCommand {
 
  private:
   explicit GdbCommand(const std::string &command) : command_(command) {}
+  explicit GdbCommand(std::string &&command) : command_(std::move(command)) {}
 
   std::string command_;
 };
@@ -95,6 +100,8 @@ inline int ensure_gdb_attached(const std::initializer_list<GdbCommand> &commands
       std::vector<const char *> argv;
       argv.push_back("gdb");
       argv.push_back("--batch");
+      argv.push_back("-ex");
+      argv.push_back("frame 1");  // remove the inner wait function by default
       for (auto iter = commands.begin(); iter != commands.end(); iter++) {
         argv.push_back("-ex");
         argv.push_back(iter->command().data());
@@ -124,12 +131,11 @@ inline int ensure_gdb_attached(const std::initializer_list<GdbCommand> &commands
 }
 }  // namespace gdb
 
-#define BREAKPOINT(...)                                     \
-  do {                                                      \
-    int status = gdb::ensure_gdb_attached({ __VA_ARGS__ }); \
-    if (status == 0) {                                      \
-      __asm__ volatile("int $0x03");                        \
-    } else if (status > 0) {                                \
-      waitpid(status, nullptr, 0);                          \
-    }                                                       \
+#define BREAKPOINT(...)                                                                \
+  do {                                                                                 \
+    if (int gdb_status = gdb::ensure_gdb_attached({ __VA_ARGS__ }); gdb_status == 0) { \
+      __asm__ volatile("int $0x03");                                                   \
+    } else if (gdb_status > 0) {                                                       \
+      waitpid(gdb_status, nullptr, 0);                                                 \
+    }                                                                                  \
   } while (false)

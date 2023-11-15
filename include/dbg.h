@@ -142,6 +142,9 @@ concept has_ostream_operator = requires(std::ostream &os, const T &t) { os << t;
 template <typename T>
 concept is_container = is_iteratable<T> && !std::same_as<std::decay_t<T>, std::string>;
 
+template <typename T>
+std::string get_type_name();
+
 namespace detail {
 // Ignore explicitly specified template arguments
 template <int &...ExplicitArgumentBarrier, typename T>
@@ -199,37 +202,7 @@ DBG_PRIMITIVE_TYPE_NAME(unsigned long long, uint64_t, 64);
 inline std::string type_name(std::type_identity<std::any>) { return "std::any"; }
 inline std::string type_name(std::type_identity<std::string>) { return "std::string"; }
 inline std::string type_name(std::type_identity<std::string_view>) { return "std::string_view"; }
-}  // namespace detail
 
-template <typename T>
-std::string get_type_name() {
-  if (std::is_volatile_v<T>) {
-    if (std::is_pointer_v<T>) {
-      return get_type_name<std::remove_volatile_t<T>>() + " volatile";
-    } else {
-      return "volatile " + get_type_name<std::remove_volatile_t<T>>();
-    }
-  }
-  if (std::is_const_v<T>) {
-    if (std::is_pointer_v<T>) {
-      return get_type_name<std::remove_const_t<T>>() + " const";
-    } else {
-      return "const " + get_type_name<std::remove_const_t<T>>();
-    }
-  }
-  if (std::is_pointer_v<T>) {
-    return get_type_name<std::remove_pointer_t<T>>() + " *";
-  }
-  if (std::is_lvalue_reference_v<T>) {
-    return get_type_name<std::remove_reference_t<T>>() + " &";
-  }
-  if (std::is_rvalue_reference_v<T>) {
-    return get_type_name<std::remove_reference_t<T>>() + " &&";
-  }
-  return detail::type_name(std::type_identity<T>{});
-}
-
-namespace detail {
 #define DBG_TEMPLATE_TYPE_NAME_1(std_type, temp, get_temp_type_name) \
   template <temp>                                                    \
   inline std::string type_name(std::type_identity<std_type<T>>) {    \
@@ -293,6 +266,34 @@ std::string type_name(std::type_identity<Base<N, T>>) {
   return get_type_name<T>();
 }
 }  // namespace detail
+
+template <typename T>
+std::string get_type_name() {
+  if (std::is_volatile_v<T>) {
+    if (std::is_pointer_v<T>) {
+      return get_type_name<std::remove_volatile_t<T>>() + " volatile";
+    } else {
+      return "volatile " + get_type_name<std::remove_volatile_t<T>>();
+    }
+  }
+  if (std::is_const_v<T>) {
+    if (std::is_pointer_v<T>) {
+      return get_type_name<std::remove_const_t<T>>() + " const";
+    } else {
+      return "const " + get_type_name<std::remove_const_t<T>>();
+    }
+  }
+  if (std::is_pointer_v<T>) {
+    return get_type_name<std::remove_pointer_t<T>>() + " *";
+  }
+  if (std::is_lvalue_reference_v<T>) {
+    return get_type_name<std::remove_reference_t<T>>() + " &";
+  }
+  if (std::is_rvalue_reference_v<T>) {
+    return get_type_name<std::remove_reference_t<T>>() + " &&";
+  }
+  return detail::type_name(std::type_identity<T>{});
+}
 
 namespace flatten {
 struct any_constructor {
@@ -470,14 +471,17 @@ inline void print(std::ostream &os, const std::nullopt_t &value) { os << "nullop
 template <size_t N, std::integral T>
 void print(std::ostream &os, const Base<N, T> &value) {
   if constexpr (N == 2) {
-    os << "0b" << std::bitset<sizeof(T) * CHAR_BIT>(value.val_);
+    std::ostringstream oss;
+    oss << std::bitset<sizeof(T) * CHAR_BIT>(value.val_);
+    auto str_view = oss.view();
+    while (str_view.size() > 1 && str_view.front() == '0') str_view.remove_prefix(1);
+    os << "0b" << str_view;
   } else {
     std::ostringstream oss;
     if constexpr (N == 8)
       oss << std::oct << "0o";
     else if constexpr (N == 16)
       oss << std::hex << "0x";
-    oss << std::setw(sizeof(T)) << std::setfill('0');
     oss << std::uppercase << +value.val_;
     os << oss.str();
   }
@@ -896,7 +900,8 @@ class Debugger {
   }
 #define DBG_REGISTER(struct_type, ...)                              \
   namespace dbg {                                                   \
-  inline void print(std::ostream &os, const struct_type &value) {   \
+  template <>                                                       \
+  void print(std::ostream &os, const struct_type &value) {          \
     size_t i_field = 0, n_field = _DBG_COUNT_ARGS(__VA_ARGS__);     \
     os << "{";                                                      \
     __VA_OPT__(_DBG_FOR_EACH(_DBG_PRINT_STRUCT_FIELD, __VA_ARGS__)) \
