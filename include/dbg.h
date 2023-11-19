@@ -1,9 +1,13 @@
 #pragma once
 
+#include <unistd.h>
+
 #include <any>
 #include <bitset>
+#include <chrono>
 #include <concepts>
 #include <cstring>
+#include <ctime>
 #include <forward_list>
 #include <fstream>
 #include <iomanip>
@@ -15,10 +19,13 @@
 #include <queue>
 #include <set>
 #include <source_location>
+#include <span>
 #include <sstream>
 #include <stack>
 #include <string>
+#include <thread>
 #include <tuple>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <valarray>
@@ -51,7 +58,7 @@ struct Option {
   std::string EXPRESSION_COLOR = "\033[36m";  // cyan
   std::string VALUE_COLOR = "\033[37m";       // white
   std::string MESSAGE_COLOR = "\033[32m";     // green
-  std::string ERROR_COLOR = "\033[1;31m";     // bold red
+  std::string ERROR_COLOR = "\033[31m";       // red
   std::string TYPE_COLOR = "\033[32m";        // magenta
   const std::string RESET_COLOR = "\033[0m";  // reset
   bool colorized_out = printer::color_print(std::cerr);
@@ -202,6 +209,7 @@ DBG_PRIMITIVE_TYPE_NAME(unsigned long long, uint64_t, 64);
 inline std::string type_name(std::type_identity<std::any>) { return "std::any"; }
 inline std::string type_name(std::type_identity<std::string>) { return "std::string"; }
 inline std::string type_name(std::type_identity<std::string_view>) { return "std::string_view"; }
+inline std::string type_name(std::type_identity<std::tm>) { return "std::tm"; }
 
 #define DBG_TEMPLATE_TYPE_NAME_1(std_type, temp, get_temp_type_name) \
   template <temp>                                                    \
@@ -466,7 +474,11 @@ inline void print(std::ostream &os, const bool &value) { os << std::boolalpha <<
 
 inline void print(std::ostream &os, const std::nullptr_t &value) { os << "nullptr"; }
 
-inline void print(std::ostream &os, const std::nullopt_t &value) { os << "nullopt"; }
+inline void print(std::ostream &os, const std::nullopt_t &value) { os << "std::nullopt"; }
+
+inline void print(std::ostream &os, const std::monostate &value) { os << "std::monostate"; }
+
+inline void print(std::ostream &os, const std::tm &value) { os << std::put_time(&value, "%F %T"); }
 
 template <size_t N, std::integral T>
 void print(std::ostream &os, const Base<N, T> &value) {
@@ -679,12 +691,12 @@ void print(std::ostream &os, const std::pair<T1, T2> &value) {
 
 template <typename T>
 void print(std::ostream &os, const std::optional<T> &value) {
-  if (value) {
+  if (value.has_value()) {
     os << '{';
-    print(os, *value);
+    print(os, value.value());
     os << '}';
   } else {
-    os << "nullopt";
+    os << "std::nullopt";
   }
 }
 
@@ -780,9 +792,9 @@ template <typename... Ts>
 using last_t = typename last<Ts...>::type;
 }  // namespace detail
 
-class Debugger {
+class Printer {
  public:
-  Debugger(const char *file, int line, const char *func) : os_(config::get_stream()) {
+  Printer(const char *file, int line, const char *func) : os_(config::get_stream()) {
     std::string file_name(file);
     if (file_name.length() > MAX_PATH) {
       file_name = ".." + file_name.substr(file_name.size() - MAX_PATH, MAX_PATH);
@@ -790,8 +802,8 @@ class Debugger {
     location_ = '[' + file_name + ':' + std::to_string(line) + " (" + func + ")]";
   }
 
-  Debugger(const Debugger &) = delete;
-  const Debugger &operator=(const Debugger &) = delete;
+  Printer(const Printer &) = delete;
+  const Printer &operator=(const Printer &) = delete;
 
   void print() { os_ << (printer::location_print(location_) + '\n'); }
   template <typename... T>
@@ -814,20 +826,18 @@ class Debugger {
     return std::forward<T>(value);
   }
   template <size_t N>
-  auto print_impl(const std::string *, const std::string *, const char (&value)[N]) -> decltype(value) {
+  decltype(auto) print_impl(const std::string *, const std::string *, const char (&value)[N]) {
     os_ << (printer::location_print(location_) + ' ' + printer::message_print(value) + '\n');
     return value;
   }
   template <typename T>
-  std::type_identity<T> &&print_impl(const std::string *, const std::string *type_name_iter,
-                                     std::type_identity<T> &&value) {
+  decltype(auto) print_impl(const std::string *, const std::string *type_name_iter, std::type_identity<T> &&value) {
     os_ << (printer::location_print(location_) + ' ' +
-            printer::type_print(*type_name_iter + " [sizeof " + std::to_string(sizeof(T)) + "]") + '\n');
+            printer::type_print(*type_name_iter + " [sizeof " + std::to_string(sizeof(T)) + ']') + '\n');
     return std::forward<std::type_identity<T>>(value);
   }
   template <typename T, typename... U>
-  auto print_impl(const std::string *expr_iter, const std::string *type_name_iter, T &&value, U &&...rest)
-      -> detail::last_t<T, U...> {
+  decltype(auto) print_impl(const std::string *expr_iter, const std::string *type_name_iter, T &&value, U &&...rest) {
     print_impl(expr_iter, type_name_iter, std::forward<T>(value));
     return print_impl(expr_iter + 1, type_name_iter + 1, std::forward<U>(rest)...);
   }
@@ -888,7 +898,7 @@ class Debugger {
 #define _DBG_GET_EXPR(x) std::string(#x)
 #define _DBG_GET_TYPE(x) dbg::get_type_name<decltype(x)>()
 #define DBG(...)                                                                  \
-  dbg::Debugger(__FILE__, __LINE__, __func__)                                     \
+  dbg::Printer(__FILE__, __LINE__, __func__)                                      \
       .print(__VA_OPT__({ _DBG_FOR_EACH_WITH_COMMA(_DBG_GET_EXPR, __VA_ARGS__) }, \
                         { _DBG_FOR_EACH_WITH_COMMA(_DBG_GET_TYPE, __VA_ARGS__) }, __VA_ARGS__))
 

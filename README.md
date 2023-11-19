@@ -101,7 +101,7 @@ It is intended to replace the cumbersome `printf("...", ...)` and `std::cout << 
 - It is a variadic macro, and also allows empty parameters
 - In addition to printing the location, expression, and returning a reference to the value, it also prints the accurate type infomation of the value
 - The output is colorized and should be easy to read
-- It is specialized for various types, including containers, smart pointers, characters, strings, enums, unions, optionals, and hexadecimal, octal and binary format integers, etc
+- It is specialized for various types, including containers, smart pointers, characters, strings, enums, unions, optionals, variants, monostate, thread::id, and hexadecimal, octal and binary format integers, etc
 - It can directly print aggregate structs, and also provides anthor macro `DBG_REGISTER(...)` for non-aggregate structs
 - Each line is squeezed into a single string and output using a `write` system call, ensuring atomicity for short outputs freely
 
