@@ -67,11 +67,16 @@ int main() {
   DBG(pq);
   char c[2][3][4];
   DBG(std::type_identity<decltype(c)>());
+  std::variant<std::monostate, int> v;
+  DBG(v);
+  auto t = std::time(NULL);
+  DBG(*std::localtime(&t));
   return 0;
 }
 ```
 
-[![dbg-demo.png](https://z1.ax1x.com/2023/11/15/piYbPpD.png)](https://imgse.com/i/piYbPpD)
+[![dbg-demo.png](https://z1.ax1x.com/2023/11/20/piUY8pQ.png)](https://imgse.com/i/piUY8pQ)
+
 
 ```cpp
 // examples/gdb/demo.cpp
@@ -91,7 +96,7 @@ int main() {
 }
 ```
 
-[![gdb-demo.png](https://z1.ax1x.com/2023/11/15/piYb24K.png)](https://imgse.com/i/piYb24K)
+[![gdb-demo.png](https://z1.ax1x.com/2023/11/20/piUY1fg.png)](https://imgse.com/i/piUY1fg)
 
 ## Features
 

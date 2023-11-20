@@ -53,5 +53,9 @@ int main() {
   DBG(pq);
   char c[2][3][4];
   DBG(std::type_identity<decltype(c)>());
+  std::variant<std::monostate, int> v;
+  DBG(v);
+  auto t = std::time(NULL);
+  DBG(*std::localtime(&t));
   return 0;
 }
