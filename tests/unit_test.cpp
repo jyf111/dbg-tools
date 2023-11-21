@@ -138,7 +138,7 @@ TEST_CASE("primitive type", "[type]") {
     const int *ee = nullptr;
     const int *eee = &i32;
     const char *str = "hello";
-    const char str_arr[] = "world";  // equal to "world"
+    const char str_arr[] = "world";
     DBG(ee);
     DBG(eee);
     DBG(str);
@@ -235,25 +235,14 @@ TEST_CASE("variadic argument", "[variadic]") {
   short c = 30;
   char d = 'O';
   double e = 10.f;
-  // DBG();
-  DBG(a);
-  DBG(b);
-  DBG(c);
-  DBG(d);
-  DBG(e);
+  DBG(a, b, c, d, e);
   int tmparr[] = { 1, 2, 3 };
   std::initializer_list<int> tmplist = { 0, 9, -1, 2 };
-  DBG(tmparr);
+  DBG(tmparr, tmplist);
   DBG(tmplist);
-  // DBG({1, 2, 3}, {0, 9, -1, 2}); // ! NOTICE
-  DBG((std::initializer_list<int>{ 1, 2, 3 }));
-  DBG((std::initializer_list<int>{ 0, 9, -1, 2 }));
-  DBG("first:");
-  DBG(a);
-  DBG("second:");
-  DBG(b);
-  DBG("third:");
-  DBG(c);
+  DBG((std::vector<int>{ 1, 2, 3 }), (std::valarray<int>{ 6, 3, 2 }));
+  DBG((std::initializer_list<int>{ 1, 2, 3 }), (std::initializer_list<int>{ 0, 9, -1, 2 }));
+  DBG("first:", a, "second: ", b, "third: ", c);
 }
 
 TEST_CASE("base output", "[base]") {
@@ -358,7 +347,6 @@ TEST_CASE("union") {
   } ud;
   ud.f = 1.23;
   DBG(ud.f);
-  // dbg(ud); // ! cann't know the value
   DBG(std::type_identity<decltype(ud)>());
 }
 

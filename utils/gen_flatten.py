@@ -33,6 +33,7 @@ if __name__ == "__main__":
       print(gen(i))
     print("template <is_aggregate Aggregate, size_t N>")
     print("constexpr auto flatten_impl(const Aggregate &t, std::integral_constant<size_t, N> N1) noexcept {")
-    print("  config::get_stream() << printer::error_print(\"Please rerun utils/gen_flatten.py to generate more binds!\");")
+    print(R'''  config::get_stream() << printer::error_print("Please rerun utils/gen_flatten.py to generate more binds for " +
+                                               dbg::get_type_name<std::remove_cvref_t<decltype(t)>>() + "!\n");''')
     print("  return std::forward_as_tuple();")
     print("}")

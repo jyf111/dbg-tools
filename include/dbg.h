@@ -421,7 +421,8 @@ constexpr auto flatten_impl(const Aggregate &t, std::integral_constant<size_t, 1
 }
 template <is_aggregate Aggregate, size_t N>
 constexpr auto flatten_impl(const Aggregate &t, std::integral_constant<size_t, N> N1) noexcept {
-  config::get_stream() << printer::error_print("Please rerun utils/gen_flatten.py to generate more binds!");
+  config::get_stream() << printer::error_print("Please rerun utils/gen_flatten.py to generate more binds for " +
+                                               dbg::get_type_name<std::remove_cvref_t<decltype(t)>>() + "!\n");
   return std::forward_as_tuple();
 }
 // End generated code
